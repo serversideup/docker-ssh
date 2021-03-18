@@ -25,7 +25,7 @@ chmod 700 /home/tunnel/.ssh/authorized_keys
 chown -R tunnel:tunnel /home/tunnel/.ssh/
 
 #########################################
-# Prep authentication 
+# Set allowed IPs
 #
 
 # Exit if there are not any Authorized Keys defined
