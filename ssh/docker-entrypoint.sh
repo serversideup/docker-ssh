@@ -35,13 +35,7 @@ if [ -z "${ALLOWED_IPS}" ]; then
 fi
 
 echo "🔐 Setting allowed IPs (from ALLOWED_IPS variable) ..."
-echo "${AUTHORIZED_KEYS}" > /home/tunnel/.ssh/authorized_keys
-
-# Secure the directory
-chmod 700 /home/tunnel/.ssh/authorized_keys
-
-# Set proper permissions
-chown -R tunnel:tunnel /home/tunnel/.ssh/
+echo "${ALLOWED_IPS}" >> /etc/ssh/sshd_config.d/custom.conf
 
 #########################################
 # Launch SSH
