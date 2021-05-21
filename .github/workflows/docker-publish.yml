@@ -23,6 +23,12 @@ jobs:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
 
+      - name: Get info
+        run: docker info
+
+      - name: CPU info
+        run: cat /proc/cpuinfo
+
       - name: Build and tag image
         run: docker build ssh/. --tag serversideup/docker-ssh
 
