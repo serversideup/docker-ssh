@@ -2,7 +2,7 @@
 # Server Side Up -  Docker Utility Image
 #####################################################
 
-FROM ubuntu:20.04
+FROM serversideup/docker-baseimage-s6-overlay-ubuntu:20.04
 
 LABEL maintainer="Jay Rogers <jay@serversideup.net>"
 
