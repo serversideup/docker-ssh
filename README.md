@@ -126,7 +126,6 @@ services:
 volumes:
   database_data:
   custom_conf:
-  ssh_conf:
 
 networks:
   web-public:
