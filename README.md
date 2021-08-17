@@ -114,8 +114,9 @@ services:
     environment:
       AUTHORIZED_KEYS: >
         "# Start Keys
-          ssh-ed25519 1234567890abcdefghijklmnoqrstuvwxyz jay
-          # End Keys"
+         ssh-ed25519 1234567890abcdefghijklmnoqrstuvwxyz user-a
+		 ssh-ed25519 abcdefghijklmnoqrstuvwxyz1234567890 user-b
+         # End Keys"
       # Lock down the access to certain IP addresses
       ALLOWED_IPS: "AllowUsers tunnel@1.2.3.4"
     restart: unless-stopped
