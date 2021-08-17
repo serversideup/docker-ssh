@@ -2,45 +2,50 @@
 # Server Side Up -  Docker Utility Image
 #####################################################
 
-FROM ubuntu:20.04
+FROM serversideup/docker-baseimage-s6-overlay-ubuntu:20.04
 
-LABEL maintainer="Jay Rogers <jay@serversideup.net>"
+LABEL maintainer="Jay Rogers (@jaydrogers)"
 
-# Install SSH server
+# Make sure we keep apt silent during installs
+ENV DEBIAN_FRONTEND=noninteractive \
+    PUID=9999 \
+    PGID=9999 \
+    SSH_USER="tunnel" \
+    SSH_GROUP="tunnelgroup" \
+    SSH_USER_HOME="/home/tunnel" \
+    SSH_PORT="2222" \
+    SSH_HOST_KEY_DIR="/etc/ssh/ssh_host_keys" \
+    LC_ALL="en_US.UTF-8" \
+    LANG="en_US.UTF-8" \
+    LANGUAGE="en_US.UTF-8"
+
+# Install SSH server and ping command
 RUN apt-get update \
     && echo "Install requirements..." \
     && apt-get -y --no-install-recommends install \
         openssh-server \
         iputils-ping \
+        locales \
+        locales-all \
     && echo "Create run directory..." \
     && mkdir /run/sshd \
-    && echo "Configure SSH..." \
-    && echo "Port 2222" > /etc/ssh/sshd_config.d/custom.conf  \
-    && echo "PermitRootLogin no" >> /etc/ssh/sshd_config.d/custom.conf  \
-    && echo "DebianBanner no" >> /etc/ssh/sshd_config.d/custom.conf  \
-    && echo "PermitEmptyPasswords no" >> /etc/ssh/sshd_config.d/custom.conf  \
-    && echo "MaxAuthTries 5" >> /etc/ssh/sshd_config.d/custom.conf  \
-    && echo "LoginGraceTime 20" >> /etc/ssh/sshd_config.d/custom.conf  \
-    && echo "ChallengeResponseAuthentication no" >> /etc/ssh/sshd_config.d/custom.conf  \
-    && echo "KerberosAuthentication no" >> /etc/ssh/sshd_config.d/custom.conf  \
-    && echo "GSSAPIAuthentication no" >> /etc/ssh/sshd_config.d/custom.conf  \
-    && echo "X11Forwarding no" >> /etc/ssh/sshd_config.d/custom.conf  \
-    && echo "AllowAgentForwarding yes" >> /etc/ssh/sshd_config.d/custom.conf  \
-    && echo "AllowTcpForwarding yes" >> /etc/ssh/sshd_config.d/custom.conf  \
-    && echo "PermitTunnel yes" >> /etc/ssh/sshd_config.d/custom.conf  \
     && echo "Configure our SSH user" \
-    && useradd -m -s /bin/bash -d /home/tunnel tunnel \
-    && mkdir /home/tunnel/.ssh/ \
+    && groupadd -r -g $PGID $SSH_GROUP \
+    && useradd --no-log-init -m -r -s /usr/bin/bash -d $SSH_USER_HOME -u $PUID -g $PGID $SSH_USER \
     && echo "Clean up after ourselves..." \
     && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* \
+    && echo "Ensure generated keys are removed at this stage..." \
+    && rm -rf /etc/ssh/ssh_host_*
 
-COPY docker-entrypoint.sh /
+# Copy over S6 configurations
+COPY etc/cont-init.d/ /etc/cont-init.d/
 
 #Expose the SSH port
 EXPOSE 2222
 
-ENTRYPOINT ["/docker-entrypoint.sh"]
+#Configure S6 to drop priveleges
+ENTRYPOINT ["/init"]
 
 # -D in CMD below prevents sshd from becoming a daemon. -e is to log everything to stderr.
 CMD ["/usr/sbin/sshd", "-D", "-e"]

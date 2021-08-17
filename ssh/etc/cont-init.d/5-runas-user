@@ -1,0 +1,37 @@
+#!/usr/bin/with-contenv bash
+
+PUID=${PUID:-9999}
+PGID=${PGID:-9999}
+
+if [[ $PUID != 9999 || $PGID != 9999 ]]; then
+    
+    # Change the group ID
+    groupmod -o -g "$PGID" $SSH_USER
+    
+    # Change the User ID
+    usermod -o -u "$PUID" $SSH_GROUP
+fi
+
+echo '
+--------------------------------------------------------------------
+ ____                             ____  _     _        _   _
+/ ___|  ___ _ ____   _____ _ __  / ___|(_) __| | ___  | | | |_ __
+\___ \ / _ \  __\ \ / / _ \  __| \___ \| |/ _` |/ _ \ | | | |  _ \
+ ___) |  __/ |   \ V /  __/ |     ___) | | (_| |  __/ | |_| | |_) |
+|____/ \___|_|    \_/ \___|_|    |____/|_|\__,_|\___|  \___/| .__/
+                                                            |_|
+
+Brought to you by serversideup.net
+--------------------------------------------------------------------'
+
+echo '
+To support Server Side Up projects visit:
+https://serversideup.net/sponsor
+-------------------------------------
+GID/UID
+-------------------------------------'
+echo "
+User uid:    $(id -u $SSH_USER)
+User gid:    $(id -g $SSH_USER)
+-------------------------------------
+"
