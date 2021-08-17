@@ -28,3 +28,23 @@ jobs:
 
       - name: Push version image to DockerHub
         run: docker push serversideup/docker-ssh
+
+  update_container_readme:
+    runs-on: ubuntu-latest
+    name: Push README to Docker Hub
+    steps:
+      - name: git checkout
+        uses: actions/checkout@v2
+        with:
+          ref: main
+
+      - name: push README to Dockerhub
+        uses: christian-korneck/update-container-description-action@v1
+        env:
+          DOCKER_USER: ${{ secrets.DOCKER_HUB_README_USERNAME }}
+          DOCKER_PASS: ${{ secrets.DOCKER_HUB_README_PASSWORD }}
+        with:
+          destination_container_repo: serversideup/docker-ssh
+          provider: dockerhub
+          short_description: 'Simple SSH container. Great for secure connections into clusters.'
+          readme_file: 'README.md'
