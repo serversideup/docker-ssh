@@ -70,6 +70,68 @@ This means I would connect with:
 ssh -p 12345 tunnel@myserver.test
 ```
 
+# Working example with MariaDB + SSH + Docker Swarm
+Here's a perfect example how you can use it with MariaDB. This allows you to use Sequel Pro or TablePlus to connect securely into your database server 🥳
+
+```yaml
+version: '3.7'
+
+services:
+  mariadb:
+    # Use the official MariaDB image
+    image: mariadb:10.5
+    # Always restart the container
+    restart: always
+    # Join it to our "web-public" Docker container
+    networks:
+      - web-public
+    # Set the MySQL Password via env variable
+    environment:
+        MYSQL_ROOT_PASSWORD: "myrootpassword"
+    # Set Docker Swarm settings to make sure this only runs on a manager in the node
+    deploy:
+      mode: global
+      placement:
+        constraints:
+          # Make the MariaDB service run only on the node with this label
+          # as the node with it has the volume for the certificates
+          - node.role==manager
+    volumes:
+      # Add volume for all database files
+      - database_data:/var/lib/mysql
+      # Add volume for custom configurations
+      - custom_conf:/etc/mysql/conf.d
+
+  ssh:
+    # Use the Docker-SSH image from Server Side Up
+    image: serversideup/docker-ssh
+    #Publish the 12345 port to the 2222 port on the container
+    ports:
+      - target: 2222
+        published: 12345
+        mode: host
+    # Set the Authorized Keys of who can connect
+    environment:
+      AUTHORIZED_KEYS: >
+        "# Start Keys
+          ssh-ed25519 1234567890abcdefghijklmnoqrstuvwxyz jay
+          # End Keys"
+      # Lock down the access to certain IP addresses
+      ALLOWED_IPS: "AllowUsers tunnel@1.2.3.4"
+    restart: unless-stopped
+    networks:
+        - web-public
+
+volumes:
+  database_data:
+  custom_conf:
+  ssh_conf:
+
+networks:
+  web-public:
+    external: true
+```
+
 # Submitting issues and pull requests
 Since there are a lot of dependencies on these images, please understand that it can make it complicated on merging your pull request.
 
