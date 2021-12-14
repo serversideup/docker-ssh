@@ -4,23 +4,24 @@
 # Prep SSHD configuration
 #
 echo "🔐 Setting SSHD configuration..."
-echo "Port $SSH_PORT" > /etc/ssh/sshd_config.d/custom.conf
-echo "PermitRootLogin no" >> /etc/ssh/sshd_config.d/custom.conf
-echo "DebianBanner no" >> /etc/ssh/sshd_config.d/custom.conf
-echo "PermitEmptyPasswords no" >> /etc/ssh/sshd_config.d/custom.conf
-echo "MaxAuthTries 5" >> /etc/ssh/sshd_config.d/custom.conf
-echo "LoginGraceTime 20" >> /etc/ssh/sshd_config.d/custom.conf
-echo "ChallengeResponseAuthentication no" >> /etc/ssh/sshd_config.d/custom.conf
-echo "KerberosAuthentication no" >> /etc/ssh/sshd_config.d/custom.conf
-echo "GSSAPIAuthentication no" >> /etc/ssh/sshd_config.d/custom.conf
-echo "X11Forwarding no" >> /etc/ssh/sshd_config.d/custom.conf
-echo "AllowAgentForwarding yes" >> /etc/ssh/sshd_config.d/custom.conf
-echo "AllowTcpForwarding yes" >> /etc/ssh/sshd_config.d/custom.conf
-echo "PermitTunnel yes" >> /etc/ssh/sshd_config.d/custom.conf
-echo "HostKey $SSH_HOST_KEY_DIR/ssh_host_rsa_key" >> /etc/ssh/sshd_config.d/custom.conf
-echo "HostKey $SSH_HOST_KEY_DIR/ssh_host_ecdsa_key" >> /etc/ssh/sshd_config.d/custom.conf
-echo "HostKey $SSH_HOST_KEY_DIR/ssh_host_ed25519_key" >> /etc/ssh/sshd_config.d/custom.conf
-
+{
+  echo "Port ${SSH_PORT}"
+  echo "PermitRootLogin no"
+  echo "DebianBanner no"
+  echo "PermitEmptyPasswords no"
+  echo "MaxAuthTries 5"
+  echo "LoginGraceTime 20"
+  echo "ChallengeResponseAuthentication no"
+  echo "KerberosAuthentication no"
+  echo "GSSAPIAuthentication no"
+  echo "X11Forwarding no"
+  echo "AllowAgentForwarding yes"
+  echo "AllowTcpForwarding yes"
+  echo "PermitTunnel yes"
+  echo "HostKey ${SSH_HOST_KEY_DIR}/ssh_host_rsa_key"
+  echo "HostKey ${SSH_HOST_KEY_DIR}/ssh_host_ecdsa_key"
+  echo "HostKey ${SSH_HOST_KEY_DIR}/ssh_host_ed25519_key"
+} > /etc/ssh/sshd_config.d/custom.conf
 
 #########################################
 # Prep authentication 
