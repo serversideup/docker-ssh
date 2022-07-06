@@ -70,7 +70,7 @@ ALLOWED_IPS="AllowUsers *@192.168.1.0/24 *@172.16.0.1 *@10.0.*.1"
 ```
 
 ### 3. Forward your external port to `2222` on the container
-You can see that I am forwarding `12345` to `2222`.
+You can see I'm forwarding `12345` to `2222`.
 ```
 docker run --rm --name=ssh --network=web -p 12345:2222 localhost/ssh
 ```
