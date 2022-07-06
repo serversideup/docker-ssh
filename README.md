@@ -40,7 +40,7 @@ It does one thing very well:
 * It automatically generates the SSH host keys and will persist if you provide a volume
 * It's based off of [S6 Overlay](https://github.com/just-containers/s6-overlay), giving you a ton of flexibility
 * It also includes the `ping` tool for troubleshooting connections
-* It's automatically updated via Github actions
+* It's automatically updated via Github Actions
 
 # Usage instructions
 All variables are documented here:
