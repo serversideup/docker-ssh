@@ -21,6 +21,19 @@ Hi! We're [Dan](https://twitter.com/danpastori) and [Jay](https://twitter.com/ja
 * 🐥 [Twitter](https://twitter.com/serversideup) - you can also follow [Dan](https://twitter.com/danpastori) and [Jay](https://twitter.com/jaydrogers)
 * ❤️ [Sponsor Us](https://github.com/sponsors/serversideup) - please consider sponsoring us so we can create more helpful resources
 
+### Our Sponsors
+All of our software is free an open to the world. None of this can be brought to you without the financial backing of our sponsors.
+
+#### 🏆 Gold Sponsor
+<a href="https://snapshooter.com/?via=serversideup&amp;utm_campaign=serversideup&amp;utm_source=serversideup&amp;utm_medium=banner" rel="sponsored" target="_blank">
+  <img width="250" src="https://521public.s3.amazonaws.com/serversideup/sponsors/snapshooter.svg" alt="SnapShooter Backups">
+</a>
+
+#### Individual Supporters
+<p align="center">
+		<a href="https://github.com/sponsors/serversideup"><img src="https://521public.s3.amazonaws.com/serversideup/sponsors/sponsor-empty-state.png" alt="Sponsors"></a>
+</p>
+
 # About this project
 This is a super simple SSHD container based on Ubuntu 20.04. It works great if you need to create a secure tunnel into your cluster.
 
