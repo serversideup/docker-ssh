@@ -75,7 +75,7 @@ jobs:
       
       - name: "👨‍🔬 Set docker tags: Non-Release "
         if: inputs.checkout-type == 'branch'
-        run: echo "DOCKER_TAGS=${{ inputs.dockerhub-repository }}:${{ steps.branch-name.outputs.current_branch }}->> $GITHUB_ENV
+        run: echo "DOCKER_TAGS=${{ inputs.dockerhub-repository }}:${{ steps.branch-name.outputs.current_branch }}" >> $GITHUB_ENV
 
       - name: "🚀 Set docker tags: Release"
         if: inputs.checkout-type == 'latest-stable'
