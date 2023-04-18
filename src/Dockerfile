@@ -7,6 +7,7 @@ ARG BASE_OS_FLAVOR='ubuntu'
 ARG BASE_OS_VERSION='20.04'
 ARG BASE_IMAGE="serversideup/s6-overlay:${UPSTREAM_CHANNEL}${BASE_OS_FLAVOR}-${BASE_OS_VERSION}"
 
+FROM ${BASE_IMAGE}
 LABEL maintainer="Jay Rogers (@jaydrogers)"
 
 # Make sure we keep apt silent during installs
