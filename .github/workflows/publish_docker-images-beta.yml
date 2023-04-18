@@ -1,0 +1,20 @@
+name: Docker Publish
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - src/**
+  schedule:
+    - cron: '0 8 * * 2'
+
+jobs:
+
+  ssh:
+    uses: ./.github/workflows/service_docker-build-and-publish.yml
+    with:
+      upstream-channel-prefix: "beta-"
+      checkout-type: branch
+    secrets: inherit

@@ -2,7 +2,10 @@
 # Server Side Up -  Docker Utility Image
 #####################################################
 
-FROM serversideup/docker-baseimage-s6-overlay-ubuntu:20.04
+ARG UPSTREAM_CHANNEL=''
+ARG BASE_OS_FLAVOR='ubuntu'
+ARG BASE_OS_VERSION='20.04'
+ARG BASE_IMAGE="serversideup/s6-overlay:${UPSTREAM_CHANNEL}${BASE_OS_FLAVOR}-${BASE_OS_VERSION}"
 
 LABEL maintainer="Jay Rogers (@jaydrogers)"
 
