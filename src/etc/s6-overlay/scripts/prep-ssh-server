@@ -24,7 +24,7 @@ echo "🔐 Setting SSHD configuration..."
 } > /etc/ssh/sshd_config.d/custom.conf
 
 #########################################
-# Prep authentication 
+# Prep authentication with authorized keys 
 #
 
 ## Example variables
@@ -34,27 +34,28 @@ echo "🔐 Setting SSHD configuration..."
 # Exit if there are not any Authorized Keys defined
 if [ -z "${AUTHORIZED_KEYS}" ]; then
   echo "🚨 AUTHORIZED_KEYS environment variable is not set. Exiting..."
-  exit 1
+  # Kill PID 1 so the container stops
+  kill -15 1
+else
+  # Make the SSH directory 
+  mkdir $SSH_USER_HOME/.ssh/
+
+  echo "🔐 Setting authorized keys (from AUTHORIZED_KEYS variable)..."
+  echo "${AUTHORIZED_KEYS}" > $SSH_USER_HOME/.ssh/authorized_keys
+
+  # Secure the authorized keys file
+  chmod 700 $SSH_USER_HOME/.ssh/authorized_keys
+
+  # Set proper permissions
+  chown -R $SSH_USER:$SSH_GROUP $SSH_USER_HOME/.ssh/
 fi
-
-# Make the SSH directory 
-mkdir $SSH_USER_HOME/.ssh/
-
-echo "🔐 Setting authorized keys (from AUTHORIZED_KEYS variable)..."
-echo "${AUTHORIZED_KEYS}" > $SSH_USER_HOME/.ssh/authorized_keys
-
-# Secure the authorized keys file
-chmod 700 $SSH_USER_HOME/.ssh/authorized_keys
-
-# Set proper permissions
-chown -R $SSH_USER:$SSH_GROUP $SSH_USER_HOME/.ssh/
 
 #########################################
 # Set allowed IPs
 #
 
 # Exit if there are not any Allowed IPs defined
-if [ -z $ALLOWED_IPS ]; then
+if [ -z "${ALLOWED_IPS}" ]; then
   echo "🚨 ALLOWED_IPS environment variable is not set. Exiting..."
   # Kill PID 1 so the container stops
   kill -15 1
