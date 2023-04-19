@@ -35,15 +35,16 @@ This is a super simple SSHD container based on Ubuntu 20.04. It works great if y
 # Available Docker Images
 This is a list of the docker images this repository creates:
 
-| ⚙️ Variation | 🎁 Version |
-|--------------|------------|
-| ssh          | [latest](https://hub.docker.com/r/serversideup/docker-ssh/tags) |
+| 🏷️ Tag                                                          | ℹ️ Description          |
+|-----------------------------------------------------------------|------------------------|
+| [latest](https://hub.docker.com/r/serversideup/docker-ssh/tags) | Use the latest version |
+| release (example: `v2.0.0`)                                     | Lock into a specific release (tagged by the GitHub release) |
 
 # What this image does
 It does one thing very well:
 
 * It's a hardened SSH server (perfect for encrypted tunnels into your cluster)
-* Set authorized keys via the `AUTHORIZED_KEYS` environment variable
+* Set authorized keys via the `AUTHORIZED_KEYS` environment variable or your own `SSH_USER_HOME/.ssh/authorized_keys` file
 * Set authorized IP addresses via the `ALLOWED_IPS` environment variable
 * It automatically generates the SSH host keys and will persist if you provide a volume
 * It's based off of [S6 Overlay](https://github.com/just-containers/s6-overlay), giving you a ton of flexibility
@@ -59,18 +60,23 @@ PUID|User ID the SSH user should run as.|9999
 PGID|Group ID the SSH user should run as.|9999
 SSH\_USER|Username for the SSH user that other users will connect into as.|tunnel
 SSH\_GROUP|Group name used for our SSH user.|tunnelgroup
-SSH\_USER\_HOME|Home location of the SSH user.|/home/tunnel
+SSH\_USER\_HOME|Home location of the SSH user.|/home/`$SSH_USER`
 SSH\_PORT|Listening port for SSH server (on container only. You'll still need to publish this port).|2222
 SSH\_HOST\_KEY\_DIR|Location of where the SSH host keys should be stored.|/etc/ssh/ssh\_host\_keys/
-AUTHORIZED\_KEYS|🚨 <b>Required to be set by you.</b> Content of your authorized keys file (see below)| 
+AUTHORIZED\_KEYS|🚨 <b>Required to be set</b> (if there isn't a `$SSH_USER_HOME/.ssh/authorized_keys` file provided). [See below]| 
 ALLOWED\_IPS|🚨 <b>Required to be set by you.</b> Content of allowed IP addresses (see below)| 
 
 
-### 1. Set your `AUTHORIZED_KEYS` environment variable
+### 1. Set your `AUTHORIZED_KEYS` environment variable or provide a `$SSH_USER_HOME/.ssh/authorized_keys` file
 You can provide multiple keys by loading the contents of a file into an environment variable.
 ```
 AUTHORIZED_KEYS="$(cat .ssh/my_many_ssh_public_keys_in_one_file.txt)"
 ```
+
+Or you can provide the `authorized_keys` file via a volume. Ensure the volume references matches the path of `$SSH_USER_HOME/.ssh/authorized_keys`.
+
+ℹ️ **NOTE:** If both a file and variable are provided, the image will respect the value of the **variable _over_ the file**.
+
 ### 2. Set your `ALLOWED_IPS` environment variable
 Set this in the same context of [AllowUsers](https://www.ssh.com/academy/ssh/sshd_config)This example shows a few scenarios you can do:
 ```
@@ -90,37 +96,19 @@ ssh -p 12345 tunnel@myserver.test
 # Working example with MariaDB + SSH + Docker Swarm
 Here's a perfect example how you can use it with MariaDB. This allows you to use Sequel Pro or TablePlus to connect securely into your database server 🥳
 
+### Example using `ALLOWED_IPS` variable:
 ```yaml
-version: '3.7'
+version: '3.9'
 
 services:
   mariadb:
-    # Use the official MariaDB image
-    image: mariadb:10.5
-    # Always restart the container
-    restart: always
-    # Join it to our "web-public" Docker container
+    image: mariadb:10.6
     networks:
-      - web-public
-    # Set the MySQL Password via env variable
+      - database
     environment:
         MYSQL_ROOT_PASSWORD: "myrootpassword"
-    # Set Docker Swarm settings to make sure this only runs on a manager in the node
-    deploy:
-      mode: global
-      placement:
-        constraints:
-          # Make the MariaDB service run only on the node with this label
-          # as the node with it has the volume for the certificates
-          - node.role==manager
-    volumes:
-      # Add volume for all database files
-      - database_data:/var/lib/mysql
-      # Add volume for custom configurations
-      - custom_conf:/etc/mysql/conf.d
 
   ssh:
-    # Use the Docker-SSH image from Server Side Up
     image: serversideup/docker-ssh
     #Publish the 12345 port to the 2222 port on the container
     ports:
@@ -136,17 +124,53 @@ services:
          # End Keys"
       # Lock down the access to certain IP addresses
       ALLOWED_IPS: "AllowUsers tunnel@1.2.3.4"
-    restart: unless-stopped
     networks:
-        - web-public
-
-volumes:
-  database_data:
-  custom_conf:
+        - database
 
 networks:
-  web-public:
-    external: true
+  database:
+```
+
+### Example using `$SSH_USER_HOME/.ssh/authorized_keys` file:
+```yaml
+version: '3.9'
+
+services:
+  mariadb:
+    image: mariadb:10.6
+    networks:
+      - database
+    environment:
+        MYSQL_ROOT_PASSWORD: "myrootpassword"
+
+  ssh:
+    image: serversideup/docker-ssh
+    #Publish the 12345 port to the 2222 port on the container
+    ports:
+      - target: 2222
+        published: 12345
+        mode: host
+    # Set the Authorized Keys of who can connect
+    environment:
+      # Lock down the access to certain IP addresses
+      ALLOWED_IPS: "AllowUsers tunnel@1.2.3.4"
+    configs:
+      - source: ssh_authorized_keys
+        # Ensure path and UID match if you change these. Displaying defaults for you below
+        target: /home/tunnel/.ssh/authorized_keys
+        uid: '9999'
+        gid: '9999'
+        mode: 0600
+    networks:
+        - database
+
+# Define the config to be used
+configs:
+  ssh_authorized_keys:
+    file: ./authorized_keys
+
+networks:
+  database:
 ```
 
 # Submitting issues and pull requests

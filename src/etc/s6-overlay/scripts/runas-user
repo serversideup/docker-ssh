@@ -1,17 +1,12 @@
-#!/usr/bin/with-contenv bash
+#!/command/with-contenv bash
 
-PUID=${PUID:-9999}
-PGID=${PGID:-9999}
+SSH_USER_HOME="${SSH_USER_HOME:-"/home/$SSH_USER"}"
 
-if [[ $PUID != 9999 || $PGID != 9999 ]]; then
-    
-    # Change the group ID
-    groupmod -o -g "$PGID" $SSH_USER
-    
-    # Change the User ID
-    usermod -o -u "$PUID" $SSH_GROUP
-fi
+# Create our SSH user
+groupadd -r -g $PGID $SSH_GROUP
+useradd --no-log-init -m -r -s /usr/bin/bash -d $SSH_USER_HOME -u $PUID -g $PGID $SSH_USER
 
+if [[ $S6_LOGGING != 1 ]]; then
 echo '
 --------------------------------------------------------------------
  ____                             ____  _     _        _   _
@@ -28,10 +23,13 @@ echo '
 To support Server Side Up projects visit:
 https://serversideup.net/sponsor
 -------------------------------------
-GID/UID
+👋 SSH User Information
 -------------------------------------'
 echo "
 User uid:    $(id -u $SSH_USER)
 User gid:    $(id -g $SSH_USER)
+Username:    $SSH_USER
+User Group:  $SSH_GROUP
 -------------------------------------
 "
+fi
