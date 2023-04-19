@@ -51,16 +51,24 @@ set_authorized_keys_from_variable () {
   echo "${AUTHORIZED_KEYS}" > $SSH_USER_HOME/.ssh/authorized_keys
 }
 
+set_authorized_keys_from_file () {
+  echo "🔐 Using the provided authorized_keys file..."
+  # Copy the authorized_keys file to the user's home directory
+  # This is a workaround for https://github.com/docker/compose/issues/9648
+  # The UID an GID options are not working with Docker Compose
+  cp /authorized_keys $SSH_USER_HOME/.ssh/authorized_keys
+}
+
 # ✅ AUTHORIZED_KEYS Variable, ❌ authorized_keys File: Use the variable
-if [ -v AUTHORIZED_KEYS ] && ! [ -f $SSH_USER_HOME/.ssh/authorized_keys ]; then
+if [ -v AUTHORIZED_KEYS ] && ! [ -f /authorized_keys ]; then
   set_authorized_keys_from_variable
 
 # ❌ AUTHORIZED_KEYS Variable, ✅ authorized_keys File: Use the file
-elif [ -z $AUTHORIZED_KEYS ] && [ -f $SSH_USER_HOME/.ssh/authorized_keys ]; then
-  echo "🔐 Using the provided authorized_keys file..."
+elif [ -z $AUTHORIZED_KEYS ] && [ -f  ]; then
+  set_authorized_keys_from_file
 
 # ✅ AUTHORIZED_KEYS Variable, ✅ authorized_keys File:  Use the variable
-elif [ -v AUTHORIZED_KEYS ] && [ -f $SSH_USER_HOME/.ssh/authorized_keys ]; then
+elif [ -v AUTHORIZED_KEYS ] && [ -f /authorized_keys ]; then
   echo "⚠️ WARNING: Both AUTHORIZED_KEYS and authorized_keys file are set."
   echo "ℹ️ INFO: We'll be using the AUTHORIZED_KEYS variable to configure SSH."
   set_authorized_keys_from_variable
