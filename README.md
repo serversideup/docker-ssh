@@ -157,10 +157,8 @@ services:
       ALLOWED_IPS: "AllowUsers tunnel@1.2.3.4"
     configs:
       - source: ssh_authorized_keys
-        # Ensure path and UID match if you change these. Displaying defaults for you below
-        target: /home/tunnel/.ssh/authorized_keys
-        uid: '9999'
-        gid: '9999'
+        # Mount the file to "/authorized_keys". The image will handle everything else
+        target: /authorized_keys
         mode: 0600
     networks:
         - database
