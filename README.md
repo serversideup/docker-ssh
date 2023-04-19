@@ -35,15 +35,16 @@ This is a super simple SSHD container based on Ubuntu 20.04. It works great if y
 # Available Docker Images
 This is a list of the docker images this repository creates:
 
-| ⚙️ Variation | 🎁 Version |
-|--------------|------------|
-| ssh          | [latest](https://hub.docker.com/r/serversideup/docker-ssh/tags) |
+| 🏷️ Tag                                                          | ℹ️ Description          |
+|-----------------------------------------------------------------|------------------------|
+| [latest](https://hub.docker.com/r/serversideup/docker-ssh/tags) | Use the latest version |
+| release (example: `v2.0.0`)                                     | Lock into a specific release (tagged by the GitHub release) |
 
 # What this image does
 It does one thing very well:
 
 * It's a hardened SSH server (perfect for encrypted tunnels into your cluster)
-* Set authorized keys via the `AUTHORIZED_KEYS` environment variable
+* Set authorized keys via the `AUTHORIZED_KEYS` environment variable or your own `SSH_USER_HOME/.ssh/authorized_keys` file
 * Set authorized IP addresses via the `ALLOWED_IPS` environment variable
 * It automatically generates the SSH host keys and will persist if you provide a volume
 * It's based off of [S6 Overlay](https://github.com/just-containers/s6-overlay), giving you a ton of flexibility
@@ -59,18 +60,23 @@ PUID|User ID the SSH user should run as.|9999
 PGID|Group ID the SSH user should run as.|9999
 SSH\_USER|Username for the SSH user that other users will connect into as.|tunnel
 SSH\_GROUP|Group name used for our SSH user.|tunnelgroup
-SSH\_USER\_HOME|Home location of the SSH user.|/home/tunnel
+SSH\_USER\_HOME|Home location of the SSH user.|/home/`$SSH_USER`
 SSH\_PORT|Listening port for SSH server (on container only. You'll still need to publish this port).|2222
 SSH\_HOST\_KEY\_DIR|Location of where the SSH host keys should be stored.|/etc/ssh/ssh\_host\_keys/
-AUTHORIZED\_KEYS|🚨 <b>Required to be set by you.</b> Content of your authorized keys file (see below)| 
+AUTHORIZED\_KEYS|🚨 <b>Required to be set</b> (if there isn't a `$SSH_USER_HOME/.ssh/authorized_keys` file provided). [See below]| 
 ALLOWED\_IPS|🚨 <b>Required to be set by you.</b> Content of allowed IP addresses (see below)| 
 
 
-### 1. Set your `AUTHORIZED_KEYS` environment variable
+### 1. Set your `AUTHORIZED_KEYS` environment variable or provide a `$SSH_USER_HOME/.ssh/authorized_keys` file
 You can provide multiple keys by loading the contents of a file into an environment variable.
 ```
 AUTHORIZED_KEYS="$(cat .ssh/my_many_ssh_public_keys_in_one_file.txt)"
 ```
+
+Or you can provide the `authorized_keys` file via a volume. Ensure the volume references matches the path of `$SSH_USER_HOME/.ssh/authorized_keys`.
+
+ℹ️ **NOTE:** If both a file and variable are provided, the image will respect the value of the **variable _over_ the file**.
+
 ### 2. Set your `ALLOWED_IPS` environment variable
 Set this in the same context of [AllowUsers](https://www.ssh.com/academy/ssh/sshd_config)This example shows a few scenarios you can do:
 ```

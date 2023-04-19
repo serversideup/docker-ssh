@@ -1,9 +1,11 @@
 #!/command/with-contenv bash
 
+SSH_USER_HOME="${SSH_USER_HOME:-"/home/$SSH_USER"}"
+
 #########################################
 # Prep SSHD configuration
 #
-echo "🔐 Setting SSHD configuration..."
+echo "🤖 Setting SSHD configuration..."
 {
   echo "Port ${SSH_PORT}"
   echo "PermitRootLogin no"
@@ -23,43 +25,67 @@ echo "🔐 Setting SSHD configuration..."
   echo "HostKey ${SSH_HOST_KEY_DIR}/ssh_host_ed25519_key"
 } > /etc/ssh/sshd_config.d/custom.conf
 
+# Make the SSH directory 
+mkdir -p $SSH_USER_HOME/.ssh/
+
 #########################################
 # Prep authentication with authorized keys 
 #
 
-## Example variables
+## Example variable:
 # AUTHORIZED_KEYS="ssh-ed25519 123456789098765432asdfghjklkjhgfd myuser"
-# ALLOWED_IPS="AllowUsers *@192.168.1.0/24 *@172.16.0.1 *@10.0.*.1"
 
-# Exit if there are not any Authorized Keys defined
-if [ -z "${AUTHORIZED_KEYS}" ]; then
-  echo "🚨 AUTHORIZED_KEYS environment variable is not set. Exiting..."
+set_authorized_keys_from_variable () {
+  echo "🔑 Setting authorized keys (from AUTHORIZED_KEYS variable)..."
+  echo "${AUTHORIZED_KEYS}" > $SSH_USER_HOME/.ssh/authorized_keys
+}
+
+# ✅ AUTHORIZED_KEYS Variable, ❌ authorized_keys File: Use the variable
+if [ -v AUTHORIZED_KEYS ] && ! [ -f $SSH_USER_HOME/.ssh/authorized_keys ]; then
+  set_authorized_keys_from_variable
+
+# ❌ AUTHORIZED_KEYS Variable, ✅ authorized_keys File: Use the file
+elif [ -z $AUTHORIZED_KEYS ] && [ -f $SSH_USER_HOME/.ssh/authorized_keys ]; then
+  echo "🔐 Using the provided authorized_keys file..."
+
+# ✅ AUTHORIZED_KEYS Variable, ✅ authorized_keys File:  Use the variable
+elif [ -v AUTHORIZED_KEYS ] && [ -f $SSH_USER_HOME/.ssh/authorized_keys ]; then
+  echo "⚠️ WARNING: Both AUTHORIZED_KEYS and authorized_keys file are set."
+  echo "ℹ️ INFO: We'll be using the AUTHORIZED_KEYS variable to configure SSH."
+  set_authorized_keys_from_variable
+
+# ❌ AUTHORIZED_KEYS Variable, ❌ authorized_keys File: Stop the container
+else
+  printf "🚨🚨🚨 CONFIGURATION ERROR:\n"
+  printf "You must either set the AUTHORIZED_KEYS\n"
+  printf "environment variable or mount a configuration file to\n"
+  printf "SSH_USER_HOME/.ssh/authorized_keys.\n"
+  printf "Exiting...\n"
   # Kill PID 1 so the container stops
   kill -15 1
-else
-  # Make the SSH directory 
-  mkdir $SSH_USER_HOME/.ssh/
-
-  echo "🔐 Setting authorized keys (from AUTHORIZED_KEYS variable)..."
-  echo "${AUTHORIZED_KEYS}" > $SSH_USER_HOME/.ssh/authorized_keys
-
-  # Secure the authorized keys file
-  chmod 700 $SSH_USER_HOME/.ssh/authorized_keys
-
-  # Set proper permissions
-  chown -R $SSH_USER:$SSH_GROUP $SSH_USER_HOME/.ssh/
 fi
+
+# Secure the authorized keys file
+chmod 700 $SSH_USER_HOME/.ssh/authorized_keys
+
+# Set proper permissions
+chown -R $SSH_USER:$SSH_GROUP $SSH_USER_HOME/.ssh/
 
 #########################################
 # Set allowed IPs
 #
 
-# Exit if there are not any Allowed IPs defined
+## Example Variable:
+# ALLOWED_IPS="AllowUsers *@192.168.1.0/24 *@172.16.0.1 *@10.0.*.1"
+
+# ❌ ALLOWED_IPS Variable
 if [ -z "${ALLOWED_IPS}" ]; then
-  echo "🚨 ALLOWED_IPS environment variable is not set. Exiting..."
+  printf "🚨🚨🚨 CONFIGURATION ERROR:\n"
+  printf "ALLOWED_IPS environment variable is not set.\n"
+  printf "Exiting...\n"
   # Kill PID 1 so the container stops
   kill -15 1
 else
-  echo "🔐 Setting allowed IPs (from ALLOWED_IPS variable) ..."
+  echo "📡 Setting allowed IPs (from ALLOWED_IPS variable) ..."
   echo "${ALLOWED_IPS}" >> /etc/ssh/sshd_config.d/custom.conf
 fi

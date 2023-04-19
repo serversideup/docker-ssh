@@ -17,7 +17,6 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PGID=9999 \
     SSH_USER="tunnel" \
     SSH_GROUP="tunnelgroup" \
-    SSH_USER_HOME="/home/tunnel" \
     SSH_PORT="2222" \
     SSH_HOST_KEY_DIR="/etc/ssh/ssh_host_keys" \
     LC_ALL="en_US.UTF-8" \

@@ -1,5 +1,7 @@
 #!/command/with-contenv bash
 
+SSH_USER_HOME="${SSH_USER_HOME:-"/home/$SSH_USER"}"
+
 # Create our SSH user
 groupadd -r -g $PGID $SSH_GROUP
 useradd --no-log-init -m -r -s /usr/bin/bash -d $SSH_USER_HOME -u $PUID -g $PGID $SSH_USER
