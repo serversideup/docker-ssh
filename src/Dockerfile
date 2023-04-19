@@ -19,6 +19,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     SSH_GROUP="tunnelgroup" \
     SSH_PORT="2222" \
     SSH_HOST_KEY_DIR="/etc/ssh/ssh_host_keys" \
+    DEBUG_MODE="false" \
     LC_ALL="en_US.UTF-8" \
     LANG="en_US.UTF-8" \
     LANGUAGE="en_US.UTF-8"

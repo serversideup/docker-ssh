@@ -1,5 +1,9 @@
 #!/command/with-contenv bash
 
+if [ $DEBUG_MODE == true ]; then
+    set -x
+fi
+
 SSH_USER_HOME="${SSH_USER_HOME:-"/home/$SSH_USER"}"
 
 # Create our SSH user

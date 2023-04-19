@@ -1,5 +1,9 @@
 #!/command/with-contenv bash
 
+if [ $DEBUG_MODE == true ]; then
+    set -x
+fi
+
 # Check if SSH host keys are missing
 if [ ! -f $SSH_HOST_KEY_DIR/ssh_host_* ]; then
   echo "🏃‍♂️ Generating SSH keys for you..."

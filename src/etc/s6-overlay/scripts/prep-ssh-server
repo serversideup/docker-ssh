@@ -1,4 +1,7 @@
 #!/command/with-contenv bash
+if [ $DEBUG_MODE == true ]; then
+    set -x
+fi
 
 SSH_USER_HOME="${SSH_USER_HOME:-"/home/$SSH_USER"}"
 
@@ -24,6 +27,14 @@ echo "🤖 Setting SSHD configuration..."
   echo "HostKey ${SSH_HOST_KEY_DIR}/ssh_host_ecdsa_key"
   echo "HostKey ${SSH_HOST_KEY_DIR}/ssh_host_ed25519_key"
 } > /etc/ssh/sshd_config.d/custom.conf
+
+if [ $DEBUG_MODE == true ]; then
+  echo "🔥🔥🔥 Putting SSH server into Debug Mode..."
+  {
+      echo "SyslogFacility AUTHPRIV"
+      echo "LogLevel DEBUG"
+  } >> /etc/ssh/sshd_config.d/custom.conf
+fi
 
 # Make the SSH directory 
 mkdir -p $SSH_USER_HOME/.ssh/

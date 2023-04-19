@@ -58,12 +58,13 @@ All variables are documented here:
 :-----:|:-----:|:-----:
 PUID|User ID the SSH user should run as.|9999
 PGID|Group ID the SSH user should run as.|9999
+DEBUG\_MODE|Display a bunch of helpful content for debugging.|false
 SSH\_USER|Username for the SSH user that other users will connect into as.|tunnel
 SSH\_GROUP|Group name used for our SSH user.|tunnelgroup
-SSH\_USER\_HOME|Home location of the SSH user.|/home/`$SSH_USER`
+SSH\_USER\_HOME|Home location of the SSH user.|/home/$SSH\_USER
 SSH\_PORT|Listening port for SSH server (on container only. You'll still need to publish this port).|2222
 SSH\_HOST\_KEY\_DIR|Location of where the SSH host keys should be stored.|/etc/ssh/ssh\_host\_keys/
-AUTHORIZED\_KEYS|🚨 <b>Required to be set</b> (if there isn't a `$SSH_USER_HOME/.ssh/authorized_keys` file provided). [See below]| 
+AUTHORIZED\_KEYS|🚨 <b>Required to be set by you.</b> Content of your authorized keys file (see below)| 
 ALLOWED\_IPS|🚨 <b>Required to be set by you.</b> Content of allowed IP addresses (see below)| 
 
 
