@@ -4,9 +4,9 @@
 
 ARG UPSTREAM_CHANNEL=''
 ARG BASE_OS_FLAVOR='ubuntu'
-ARG BASE_OS_VERSION='20.04'
-ARG S6_OVERLAY_VERSION='v1.0.0'
-ARG BASE_IMAGE="serversideup/s6-overlay:${S6_OVERLAY_VERSION}"
+ARG BASE_OS_VERSION='22.04'
+ARG S6_OVERLAY_VERSION='v3.1.4.2'
+ARG BASE_IMAGE="serversideup/s6-overlay:${UPSTREAM_CHANNEL}${BASE_OS_FLAVOR}-${BASE_OS_VERSION}-${S6_OVERLAY_VERSION}"
 
 FROM ${BASE_IMAGE}
 LABEL maintainer="Jay Rogers (@jaydrogers)"
@@ -34,9 +34,6 @@ RUN apt-get update \
         locales-all \
     && echo "Create run directory..." \
     && mkdir /run/sshd \
-    && echo "Configure our SSH user" \
-    && groupadd -r -g $PGID $SSH_GROUP \
-    && useradd --no-log-init -m -r -s /usr/bin/bash -d $SSH_USER_HOME -u $PUID -g $PGID $SSH_USER \
     && echo "Clean up after ourselves..." \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* \
@@ -44,7 +41,7 @@ RUN apt-get update \
     && rm -rf /etc/ssh/ssh_host_*
 
 # Copy over S6 configurations
-COPY etc/cont-init.d/ /etc/cont-init.d/
+COPY --chmod=755 etc/s6-overlay/ /etc/s6-overlay/
 
 #Expose the SSH port
 EXPOSE 2222

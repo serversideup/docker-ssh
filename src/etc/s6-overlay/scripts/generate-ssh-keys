@@ -1,4 +1,4 @@
-#!/usr/bin/with-contenv bash
+#!/command/with-contenv bash
 
 # Check if SSH host keys are missing
 if [ ! -f $SSH_HOST_KEY_DIR/ssh_host_* ]; then

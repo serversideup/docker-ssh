@@ -1,4 +1,4 @@
-#!/usr/bin/with-contenv bash
+#!/command/with-contenv bash
 
 #########################################
 # Prep SSHD configuration
@@ -41,7 +41,7 @@ fi
 mkdir $SSH_USER_HOME/.ssh/
 
 echo "🔐 Setting authorized keys (from AUTHORIZED_KEYS variable)..."
-echo "${AUTHORIZED_KEYS}" > /home/tunnel/.ssh/authorized_keys
+echo "${AUTHORIZED_KEYS}" > $SSH_USER_HOME/.ssh/authorized_keys
 
 # Secure the authorized keys file
 chmod 700 $SSH_USER_HOME/.ssh/authorized_keys
@@ -53,11 +53,12 @@ chown -R $SSH_USER:$SSH_GROUP $SSH_USER_HOME/.ssh/
 # Set allowed IPs
 #
 
-# Exit if there are not any Authorized Keys defined
-if [ -z "${ALLOWED_IPS}" ]; then
+# Exit if there are not any Allowed IPs defined
+if [ -z $ALLOWED_IPS ]; then
   echo "🚨 ALLOWED_IPS environment variable is not set. Exiting..."
-  exit 1
+  # Kill PID 1 so the container stops
+  kill -15 1
+else
+  echo "🔐 Setting allowed IPs (from ALLOWED_IPS variable) ..."
+  echo "${ALLOWED_IPS}" >> /etc/ssh/sshd_config.d/custom.conf
 fi
-
-echo "🔐 Setting allowed IPs (from ALLOWED_IPS variable) ..."
-echo "${ALLOWED_IPS}" >> /etc/ssh/sshd_config.d/custom.conf
