@@ -68,13 +68,13 @@ AUTHORIZED\_KEYS|🚨 <b>Required to be set by you.</b> Content of your authoriz
 ALLOWED\_IPS|🚨 <b>Required to be set by you.</b> Content of allowed IP addresses (see below)| 
 
 
-### 1. Set your `AUTHORIZED_KEYS` environment variable or provide a `$SSH_USER_HOME/.ssh/authorized_keys` file
+### 1. Set your `AUTHORIZED_KEYS` environment variable or provide a `/authorized_keys` file
 You can provide multiple keys by loading the contents of a file into an environment variable.
 ```
 AUTHORIZED_KEYS="$(cat .ssh/my_many_ssh_public_keys_in_one_file.txt)"
 ```
 
-Or you can provide the `authorized_keys` file via a volume. Ensure the volume references matches the path of `$SSH_USER_HOME/.ssh/authorized_keys`.
+Or you can provide the `authorized_keys` file via a volume. Ensure the volume references matches the path of `/authorized_keys`. The image will automatically take the file from `/authorized_keys` and configure it for use with your selected user.
 
 ℹ️ **NOTE:** If both a file and variable are provided, the image will respect the value of the **variable _over_ the file**.
 
