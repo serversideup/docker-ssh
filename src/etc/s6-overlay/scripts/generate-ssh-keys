@@ -5,7 +5,7 @@ if [ $DEBUG_MODE == true ]; then
 fi
 
 # Check if SSH host keys are missing
-if [ ! -f $SSH_HOST_KEY_DIR/ssh_host_* ]; then
+if ! [ -e  $SSH_HOST_KEY_DIR/ssh_host_* ]; then
   echo "🏃‍♂️ Generating SSH keys for you..."
   dpkg-reconfigure openssh-server
   # Check if the host directory exists. Create it if needed
