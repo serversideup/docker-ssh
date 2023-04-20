@@ -5,14 +5,6 @@ on:
         required: true
         type: string
         default: ''
-      base-os-flavor:
-        required: false
-        type: string
-        default: 'ubuntu'
-      base-os-version:
-        required: false
-        type: string
-        default: '20.04'
       dockerhub-repository:
         required: false
         type: string
@@ -86,8 +78,6 @@ jobs:
         with:
           build-args: |
             UPSTREAM_CHANNEL=${{ inputs.upstream-channel-prefix }}
-            BASE_OS_FLAVOR=${{ inputs.base-os-flavor }}
-            BASE_OS_VERSION=${{ inputs.base-os-version }}
           context: src/
           platforms: |
             linux/amd64
