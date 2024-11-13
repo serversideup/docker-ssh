@@ -1,0 +1,33 @@
+#!/bin/sh
+###################################################
+# Usage: serversideup-create-unprivileged-user [username] [PUID] [PGID]
+###################################################
+script_name="serversideup-create-unprivileged-user"
+
+############
+# Sanity checks
+############
+if [ $# -ne 3 ]; then
+    echo "🛑 ERROR ($script_name): Invalid number of arguments."
+    exit 1
+fi
+
+############
+# Variables
+############
+username="$1"
+PUID="$2"
+PGID="$3"
+
+############
+# Main
+############
+if [ -f /etc/alpine-release ]; then
+    # Alpine
+    addgroup -g "${PGID}" "${username}" && \
+    adduser -u "${PUID}" -G "${username}" -h "/home/${username}" -D "${username}"
+else
+    # Debian
+    addgroup --gid "${PGID}" "${username}" && \
+    adduser --uid "${PUID}" --gid "${PGID}" --home "/home/${username}" --disabled-password --gecos '' "${username}"
+fi

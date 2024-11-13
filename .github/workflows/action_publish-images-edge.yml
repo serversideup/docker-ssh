@@ -1,23 +1,23 @@
-name: Docker Publish
+name: Docker Publish (Edge Images)
 
 on:
   workflow_dispatch:
-  release:
-    types: [released]
-  schedule:
-    - cron: '0 8 * * 2'
-
+  push:
+    branches:
+      - main
+    paths:
+      - src/**
+      - .github/workflows/**
+      - generate-tags.sh
 jobs:
-
-  ssh:
+  build-edge-images:
     uses: ./.github/workflows/service_docker-build-and-publish.yml
-    with:
-      upstream-channel-prefix: ''
-      checkout-type: latest-stable
     secrets: inherit
+    with:
+      release_type: 'edge'
 
   update_container_readme:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     name: Push README to Docker Hub
     steps:
       - name: git checkout
