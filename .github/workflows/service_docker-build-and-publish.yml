@@ -40,7 +40,7 @@ jobs:
         run: |
           bash build.sh \
             --release-type ${{ inputs.release_type }} \
-            --print-tags-only\
+            --print-tags-only
 
       - name: Set REPOSITORY_BUILD_VERSION
         id: set_version
@@ -66,4 +66,4 @@ jobs:
           pull: true
           push: true
           tags: ${{ env.DOCKER_TAGS }}
-          outputs: type=image,name=target,annotation-index.org.opencontainers.image.description=Run Ansible anywhere with the power of Docker
+          outputs: type=image,name=target,annotation-index.org.opencontainers.image.description=Run SSH anywhere with the power of Docker
