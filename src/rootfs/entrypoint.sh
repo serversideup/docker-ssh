@@ -22,6 +22,15 @@ debug_print() {
     fi
 }
 
+validate_allowed_ips() {
+    local ips="$1"
+    # Validate AllowUsers entries and IP addresses
+    if ! echo "$ips" | grep -E '^(AllowUsers|from) [a-zA-Z0-9@., ]+$'; then
+        echo "Invalid ALLOWED_IPS format"
+        exit 1
+    fi
+}
+
 ######################################################
 # Main
 ######################################################
@@ -94,6 +103,19 @@ echo "🤖 Setting SSHD configuration..."
     echo "HostKey ${ssh_host_key_dir}/ssh_host_rsa_key"
     echo "HostKey ${ssh_host_key_dir}/ssh_host_ecdsa_key"
     echo "HostKey ${ssh_host_key_dir}/ssh_host_ed25519_key"
+    echo "SyslogFacility AUTH"
+    echo "LogLevel VERBOSE"
+    # Strict authentication
+    echo "PasswordAuthentication no"
+    echo "UsePAM no"
+    echo "AuthenticationMethods publickey"
+    # Brute force protection
+    echo "MaxSessions 10"
+    echo "MaxAuthTries 3"
+    echo "LoginGraceTime 15"
+    echo "MaxStartups 10:30:100"
+    echo "ClientAliveInterval 300"
+    echo "ClientAliveCountMax 2"
 } > /etc/ssh/sshd_config.d/custom.conf
 
 if [ "$DEBUG" = "true" ]; then
@@ -122,6 +144,7 @@ if [ ! -f "${ssh_host_key_dir}/ssh_host_rsa_key" ] || [ ! -f "${ssh_host_key_dir
 fi
 
 # Configure allowed IPs
+validate_allowed_ips "${ALLOWED_IPS}"
 if [ -z "${ALLOWED_IPS}" ]; then
     echo "🚨🚨🚨 CONFIGURATION ERROR:"
     echo "ALLOWED_IPS environment variable is not set."
@@ -162,6 +185,9 @@ chown "${PUID}:${PGID}" \
 chmod 700 \
     "${ssh_user_home}/.ssh" \
     "${ssh_user_home}/.ssh/authorized_keys"
+# Ensure strict permissions on SSH configuration
+chmod 600 /etc/ssh/sshd_config.d/*.conf
+chmod 755 /etc/ssh/sshd_config.d
 
 # Create a custom MOTD
 echo "🎨 Creating custom MOTD..."
