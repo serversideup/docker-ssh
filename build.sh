@@ -13,6 +13,9 @@ PRINT_TAGS_ONLY=false
 RELEASE_TYPE="dev"
 VERSION=""
 
+# At the top with other variable declarations
+declare -a tags=()
+
 ##################################################
 # Functions
 ##################################################
@@ -45,6 +48,25 @@ add_tag() {
             tags+=("${org}/${DOCKER_REPOSITORY_NAME}:${full_tag}-${GITHUB_REF_NAME}")
         fi
     done
+}
+
+build_image() {
+    echo "Building image..."
+    
+    # Generate tag arguments for docker buildx
+    local tag_args=()
+    while IFS= read -r tag; do
+        tag_args+=("-t" "$tag")
+    done < <(generate_tags)
+    
+    # Build the image with all tags
+    docker buildx build \
+        -f "$(pwd)/src/Dockerfile" \
+        "${tag_args[@]}" \
+        .
+    
+    echo "✅ Image built with tags:"
+    generate_tags
 }
 
 generate_tags() {
@@ -118,6 +140,10 @@ while [[ $# -gt 0 ]]; do
         DOCKER_ORGANIZATIONS="$2"
         shift 2
         ;;
+        --print-tags-only)
+        PRINT_TAGS_ONLY=true
+        shift
+        ;;
         --help)
         help_menu
         exit 0
@@ -130,4 +156,8 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-print_tags 
+print_tags
+
+if [ "$PRINT_TAGS_ONLY" = false ]; then
+    build_image
+fi

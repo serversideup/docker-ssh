@@ -14,7 +14,8 @@ ENV ALLOWED_IPS="AllowUsers tunnel" \
     SSH_PORT="2222" \
     SSH_USER="tunnel"
 
-ARG PACKAGE_DEPENDENCIES="openssh-server,iputils-ping,locales,tini"
+ARG PACKAGE_DEPENDENCIES="openssh-server,iputils-ping,locales,tini" \
+    REPOSITORY_BUILD_VERSION="dev"
 
 COPY --chown=root:root --chmod=755 src/rootfs /
 
