@@ -8,43 +8,41 @@
 	<a href="https://community.serversideup.net"><img alt="Discourse users" src="https://img.shields.io/discourse/users?color=blue&server=https%3A%2F%2Fcommunity.serversideup.net"></a>
   <a href="https://serversideup.net/discord"><img alt="Discord" src="https://img.shields.io/discord/910287105714954251?color=blueviolet"></a>
 </p>
-# About this project
-This is a super simple SSHD container based on Ubuntu 20.04. It works great if you need to create a secure tunnel into your cluster.
 
-# Available Docker Images
+## Introduction
+`serversideup/docker-ssh` is a hardened SSH server container based on Debian. It works great if you need to create a secure tunnel into your cluster.
+
+## Features
+- 🐧 **Debian-based** - Get a lightweight experience, while still having Bash
+- 🤝 **Key-based auth via ENV** - Grant access with the `AUTHORIZED_KEYS` environment variable
+- ⛔️ **Block IPs via ENV** - Block access with the `ALLOWED_IPS` environment variable
+- 🔒 **Unprivileged user** - All SSH connections are made as an unprivileged user
+- 🔑 **Set your own PUID and PGID** - Have the PUID and PGID match your host user
+- 🔐 **Hardened SSH** - Prevent bot attacks and ensure quality security
+- 📦 **DockerHub and GitHub Container Registry** - Choose where you'd like to pull your image from
+- 🤖 **Multi-architecture** - Every image ships with x86_64 and arm64 architectures
+
+## Usage
 This is a list of the docker images this repository creates:
 
-| 🏷️ Tag                                                          | ℹ️ Description          |
-|-----------------------------------------------------------------|------------------------|
-| [latest](https://hub.docker.com/r/serversideup/docker-ssh/tags) | Use the latest version |
-| release (example: `v2.0.0`)                                     | Lock into a specific release (tagged by the GitHub release) |
+| Image | Image Size | Description |
+| --------- | -------------------- | ----------- |
+| `serversideup/docker-ssh` |[![DockerHub serversideup/docker-ssh](https://img.shields.io/docker/image-size/serversideup/docker-ssh/latest?label=latest)](https://hub.docker.com/r/serversideup/docker-ssh) | A hardened SSH server based on Debian Bookworm. |
 
-# What this image does
-It does one thing very well:
-
-* It's a hardened SSH server (perfect for encrypted tunnels into your cluster)
-* Set authorized keys via the `AUTHORIZED_KEYS` environment variable or your own `SSH_USER_HOME/.ssh/authorized_keys` file
-* Set authorized IP addresses via the `ALLOWED_IPS` environment variable
-* It automatically generates the SSH host keys and will persist if you provide a volume
-* It's based off of [S6 Overlay](https://github.com/just-containers/s6-overlay), giving you a ton of flexibility
-* It also includes the `ping` tool for troubleshooting connections
-* It's automatically updated via Github Actions
-
-# Usage instructions
+## Usage instructions
 All variables are documented here:
 
 **🔀 Variable Name**|**📚 Description**|**#️⃣ Default Value**
 :-----:|:-----:|:-----:
-PUID|User ID the SSH user should run as.|9999
+ALLOWED_IPS| Content of allowed IP addresses (see below)| `AllowUsers tunnel` (allow the `tunnel` user from any IP) |
+AUTHORIZED_KEYS|🚨 <b>Required to be set by you.</b> Content of your authorized keys file (see below)|  |
+DEBUG|Display a bunch of helpful content for debugging.|false
 PGID|Group ID the SSH user should run as.|9999
-DEBUG\_MODE|Display a bunch of helpful content for debugging.|false
-SSH\_USER|Username for the SSH user that other users will connect into as.|tunnel
-SSH\_GROUP|Group name used for our SSH user.|tunnelgroup
-SSH\_USER\_HOME|Home location of the SSH user.|/home/$SSH\_USER
-SSH\_PORT|Listening port for SSH server (on container only. You'll still need to publish this port).|2222
-SSH\_HOST\_KEY\_DIR|Location of where the SSH host keys should be stored.|/etc/ssh/ssh\_host\_keys/
-AUTHORIZED\_KEYS|🚨 <b>Required to be set by you.</b> Content of your authorized keys file (see below)| 
-ALLOWED\_IPS|🚨 <b>Required to be set by you.</b> Content of allowed IP addresses (see below)| 
+PUID|User ID the SSH user should run as.|9999
+SSH_GROUP|Group name used for our SSH user.|`tunnelgroup`
+SSH_HOST_KEY_DIR|Location of where the SSH host keys should be stored.|`/etc/ssh/ssh_host_keys/`
+SSH_PORT|Listening port for SSH server (on container only. You'll still need to publish this port).|`2222`
+SSH_USER|Username for the SSH user that other users will connect into as.|`tunnel`
 
 
 ### 1. Set your `AUTHORIZED_KEYS` environment variable or provide a `/authorized_keys` file
@@ -78,22 +76,18 @@ Here's a perfect example how you can use it with MariaDB. This allows you to use
 
 ### Example using `ALLOWED_IPS` variable:
 ```yaml
-version: '3.9'
-
 services:
   mariadb:
-    image: mariadb:10.6
+    image: mariadb:10.11
     networks:
       - database
     environment:
-        MYSQL_ROOT_PASSWORD: "myrootpassword"
-
+        MARIADB_ROOT_PASSWORD: "myrootpassword"
   ssh:
     image: serversideup/docker-ssh
-    #Publish the 12345 port to the 2222 port on the container
     ports:
       - target: 2222
-        published: 12345
+        published: 2222
         mode: host
     # Set the Authorized Keys of who can connect
     environment:
@@ -113,22 +107,19 @@ networks:
 
 ### Example using `$SSH_USER_HOME/.ssh/authorized_keys` file:
 ```yaml
-version: '3.9'
-
 services:
   mariadb:
-    image: mariadb:10.6
+    image: mariadb:10.11
     networks:
       - database
     environment:
-        MYSQL_ROOT_PASSWORD: "myrootpassword"
+        MARIADB_ROOT_PASSWORD: "myrootpassword"
 
   ssh:
     image: serversideup/docker-ssh
-    #Publish the 12345 port to the 2222 port on the container
     ports:
       - target: 2222
-        published: 12345
+        published: 2222
         mode: host
     # Set the Authorized Keys of who can connect
     environment:
@@ -151,13 +142,24 @@ networks:
   database:
 ```
 
-# Submitting issues and pull requests
-Since there are a lot of dependencies on these images, please understand that it can make it complicated on merging your pull request.
+## Resources
+- **[DockerHub](https://hub.docker.com/r/serversideup/ansible)** to browse the images.
+- **[Discord](https://serversideup.net/discord)** for friendly support from the community and the team.
+- **[GitHub](https://github.com/serversideup/docker-ssh)** for source code, bug reports, and project management.
+- **[Get Professional Help](https://serversideup.net/professional-support)** - Get video + screen-sharing help directly from the core contributors.
 
-We'd love to have your help, but it might be best to explain your intentions first before contributing.
+## Contributing
+As an open-source project, we strive for transparency and collaboration in our development process. We greatly appreciate any contributions members of our community can provide. Whether you're fixing bugs, proposing features, improving documentation, or spreading awareness - your involvement strengthens the project. Please review our [code of conduct](./.github/code_of_conduct.md) to understand how we work together respectfully.
 
-### Like we said -- we're always learning
-If you find a critical security flaw, please open an issue or learn more about [our responsible disclosure policy](https://www.notion.so/Responsible-Disclosure-Policy-421a6a3be1714d388ebbadba7eebbdc8).
+- **Bug Report**: If you're experiencing an issue while using these images, please [create an issue](https://github.com/serversideup/docker-ssh/issues/new/choose).
+- **Feature Request**: Make this project better by [submitting a feature request](https://github.com/serversideup/docker-ssh/discussions/).
+- **Documentation**: Improve our documentation by [submitting a documentation change](./README.md).
+- **Community Support**: Help others on [GitHub Discussions](https://github.com/serversideup/docker-ssh/discussions) or [Discord](https://serversideup.net/discord).
+- **Security Report**: Report critical security issues via [our responsible disclosure policy](https://www.notion.so/Responsible-Disclosure-Policy-421a6a3be1714d388ebbadba7eebbdc8).
+
+Need help getting started? Join our Discord community and we'll help you out!
+
+<a href="https://serversideup.net/discord"><img src="https://serversideup.net/wp-content/themes/serversideup/images/open-source/join-discord.svg" title="Join Discord"></a>
 
 ## Our Sponsors
 All of our software is free an open to the world. None of this can be brought to you without the financial backing of our sponsors.
