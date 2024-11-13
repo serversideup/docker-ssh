@@ -1,53 +1,55 @@
-####################################################
-# Server Side Up -  Docker Utility Image
-#####################################################
+# syntax=docker/dockerfile:1
+# check=skip=SecretsUsedInArgOrEnv
+FROM debian:bookworm-slim
 
-ARG UPSTREAM_CHANNEL=''
-ARG BASE_OS_FLAVOR='ubuntu'
-ARG BASE_OS_VERSION='22.04'
-ARG S6_OVERLAY_VERSION='v3.1.4.2'
-ARG BASE_IMAGE="serversideup/s6-overlay:${UPSTREAM_CHANNEL}${BASE_OS_FLAVOR}-${BASE_OS_VERSION}-${S6_OVERLAY_VERSION}"
-
-FROM ${BASE_IMAGE}
-LABEL maintainer="Jay Rogers (@jaydrogers)"
-
-# Make sure we keep apt silent during installs
-ENV DEBIAN_FRONTEND=noninteractive \
-    PUID=9999 \
-    PGID=9999 \
-    SSH_USER="tunnel" \
-    SSH_GROUP="tunnelgroup" \
-    SSH_PORT="2222" \
-    SSH_HOST_KEY_DIR="/etc/ssh/ssh_host_keys" \
+ENV ALLOWED_IPS="AllowUsers tunnel" \
     DEBUG_MODE="false" \
-    LC_ALL="en_US.UTF-8" \
+    DEBIAN_FRONTEND=noninteractive \
     LANG="en_US.UTF-8" \
-    LANGUAGE="en_US.UTF-8"
+    LANGUAGE="en_US.UTF-8" \
+    LC_ALL="en_US.UTF-8" \
+    PGID=9999 \
+    PUID=9999 \
+    SSH_HOST_KEY_DIR="/etc/ssh/ssh_host_keys" \
+    SSH_PORT="2222" \
+    SSH_USER="tunnel"
 
-# Install SSH server and ping command
-RUN apt-get update \
-    && echo "Install requirements..." \
-    && apt-get -y --no-install-recommends install \
-        openssh-server \
-        iputils-ping \
-        locales \
-        locales-all \
-    && echo "Create run directory..." \
-    && mkdir /run/sshd \
-    && echo "Clean up after ourselves..." \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* \
-    && echo "Ensure generated keys are removed at this stage..." \
-    && rm -rf /etc/ssh/ssh_host_*
+ARG PACKAGE_DEPENDENCIES="openssh-server,iputils-ping,locales,tini" \
+    REPOSITORY_BUILD_VERSION="dev"
 
-# Copy over S6 configurations
-COPY --chmod=755 etc/s6-overlay/ /etc/s6-overlay/
+COPY --chown=root:root --chmod=755 src/rootfs /
 
-#Expose the SSH port
+RUN serversideup-dep-install-debian ${PACKAGE_DEPENDENCIES} && \
+    \
+    # Generate required locales
+    echo "en_US.UTF-8 UTF-8" > /etc/locale.gen && \
+    locale-gen && \
+    update-locale LANG=en_US.UTF-8 && \
+    \
+    # Create unprivileged user
+    serversideup-create-unprivileged-user "$SSH_USER" "${PUID}" "${PGID}" && \
+    \
+    # Set proper permissions
+    mkdir -p /home/$SSH_USER/.ssh $SSH_HOST_KEY_DIR && \
+    chown -R $SSH_USER:$SSH_USER $SSH_HOST_KEY_DIR /home/$SSH_USER/.ssh && \
+    chmod 700 /home/$SSH_USER/.ssh && \
+    \
+    # Create run directory
+    mkdir -p /run/sshd
+
+# Expose the SSH port
 EXPOSE 2222
 
-#Configure S6 to drop priveleges
-ENTRYPOINT ["/init"]
+LABEL org.opencontainers.image.title="serversideup/docker-ssh" \
+    org.opencontainers.image.description="Simple SSH container. Great for secure connections into clusters." \
+    org.opencontainers.image.url="https://github.com/serversideup/docker-ssh" \
+    org.opencontainers.image.source="https://github.com/serversideup/docker-ssh" \
+    org.opencontainers.image.documentation="https://github.com/serversideup/docker-ssh" \
+    org.opencontainers.image.vendor="ServerSideUp" \
+    org.opencontainers.image.authors="Jay Rogers (@jaydrogers)" \
+    org.opencontainers.image.version="${REPOSITORY_BUILD_VERSION}" \
+    org.opencontainers.image.licenses="GPL-3.0-or-later"
 
-# -D in CMD below prevents sshd from becoming a daemon. -e is to log everything to stderr.
+
+ENTRYPOINT ["/usr/bin/tini", "--", "/entrypoint.sh"]
 CMD ["/usr/sbin/sshd", "-D", "-e"]
