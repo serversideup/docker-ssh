@@ -40,12 +40,12 @@ add_tag() {
     # Add tags for each Docker organization
     for org in $DOCKER_ORGANIZATIONS; do
         if [ -n "$GITHUB_REF_NAME" ] && [ "$RELEASE_TYPE" == "pr" ]; then
+            # Only add PR-specific tags
             tags+=("${org}/${DOCKER_REPOSITORY_NAME}:${full_tag}-${GITHUB_REF_NAME}")
             break
-        fi
-        tags+=("${org}/${DOCKER_REPOSITORY_NAME}:${full_tag}")
-        if [ -n "$GITHUB_REF_NAME" ] && [ "${full_tag}" != "$RELEASE_TYPE" ] && [ "$GITHUB_REF_TYPE" == "tag" ]; then
-            tags+=("${org}/${DOCKER_REPOSITORY_NAME}:${full_tag}-${GITHUB_REF_NAME}")
+        else
+            # Add the regular tag
+            tags+=("${org}/${DOCKER_REPOSITORY_NAME}:${full_tag}")
         fi
     done
 }
