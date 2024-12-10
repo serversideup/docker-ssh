@@ -25,19 +25,20 @@ PGID="$3"
 if [ -f /etc/alpine-release ]; then
     # Alpine
     addgroup -g "${PGID}" "${username}" && \
-    adduser -u "${PUID}" -G "${username}" -h "/home/${username}" -s /bin/sh -D "${username}" && \
-    # Set account to expired but not locked
-    chage -E 0 "${username}"
+    adduser -u "${PUID}" -G "${username}" -h "/home/${username}" -s /bin/sh -D "${username}"
 else
     # Debian
-    addgroup --gid "${PGID}" "${username}" && \
-    adduser --uid "${PUID}" \
-            --gid "${PGID}" \
-            --home "/home/${username}" \
-            --shell /bin/bash \
-            --disabled-password \
-            --gecos '' \
-            "${username}" && \
-    # Set a locked password that can't be used but keeps the account unlocked
-    usermod -p '!' "${username}"
+    groupadd -g "${PGID}" "${username}" && \
+    useradd --no-log-init \
+            -m \
+            -s /bin/bash \
+            -d "/home/${username}" \
+            -u "${PUID}" \
+            -g "${PGID}" \
+            "${username}"
 fi
+
+# Set a proper password hash that allows SSH key auth but prevents password login
+# '*' allows the account to be active but prevents password login
+# This works the same way on both Alpine and Debian
+usermod -p '*' "${username}"
