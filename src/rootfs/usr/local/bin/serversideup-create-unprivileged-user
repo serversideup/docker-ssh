@@ -29,7 +29,11 @@ if [ -f /etc/alpine-release ]; then
 else
     # Debian
     addgroup --gid "${PGID}" "${username}" && \
-    adduser --uid "${PUID}" --gid "${PGID}" --home "/home/${username}" --shell /bin/bash --disabled-password --gecos '' "${username}" && \
-    # Ensure the account is not locked
-    passwd -u "${username}"
+    adduser --uid "${PUID}" \
+            --gid "${PGID}" \
+            --home "/home/${username}" \
+            --shell /bin/bash \
+            --disabled-password \
+            --gecos '' \
+            "${username}"
 fi
