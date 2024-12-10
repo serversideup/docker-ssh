@@ -105,6 +105,9 @@ echo "🤖 Setting SSHD configuration..."
     echo "HostKey ${ssh_host_key_dir}/ssh_host_ed25519_key"
     echo "SyslogFacility AUTH"
     echo "LogLevel VERBOSE"
+    # Enable MOTD display
+    echo "PrintMotd yes"
+    echo "PrintLastLog yes"
     # Strict authentication
     echo "PasswordAuthentication no"
     echo "UsePAM no"
