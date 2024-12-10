@@ -25,9 +25,11 @@ PGID="$3"
 if [ -f /etc/alpine-release ]; then
     # Alpine
     addgroup -g "${PGID}" "${username}" && \
-    adduser -u "${PUID}" -G "${username}" -h "/home/${username}" -D "${username}"
+    adduser -u "${PUID}" -G "${username}" -h "/home/${username}" -s /bin/sh -D "${username}"
 else
     # Debian
     addgroup --gid "${PGID}" "${username}" && \
-    adduser --uid "${PUID}" --gid "${PGID}" --home "/home/${username}" --disabled-password --gecos '' "${username}"
+    adduser --uid "${PUID}" --gid "${PGID}" --home "/home/${username}" --shell /bin/bash --disabled-password --gecos '' "${username}" && \
+    # Ensure the account is not locked
+    passwd -u "${username}"
 fi
