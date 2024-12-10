@@ -33,7 +33,6 @@ else
             --gid "${PGID}" \
             --home "/home/${username}" \
             --shell /bin/bash \
-            --disabled-password \
             --gecos '' \
             "${username}"
 fi
