@@ -49,21 +49,34 @@ jobs:
         shell: bash
         run: |
           if [ -f trivy-results.json ]; then
-            VULN_COUNT=$(jq -r '.vulnerabilities | length // 0' trivy-results.json)
+            # Count both vulnerabilities and secrets
+            VULN_COUNT=$(jq -r '[.Results[] | (.Vulnerabilities, .Secrets) | select(. != null) | length] | add // 0' trivy-results.json)
+            
             if [ "${VULN_COUNT:-0}" -gt 0 ]; then
               echo "has_vulnerabilities=true" >> "$GITHUB_OUTPUT"
               
-              # Create native GitHub annotations for vulnerabilities
-              echo "# Security Vulnerabilities Found" >> $GITHUB_STEP_SUMMARY
-              echo "| Severity | Package | Installed Version | Vulnerability ID | Description |" >> $GITHUB_STEP_SUMMARY
-              echo "|----------|---------|-------------------|------------------|-------------|" >> $GITHUB_STEP_SUMMARY
+              echo "# Security Findings Found" >> $GITHUB_STEP_SUMMARY
               
-              jq -r '.vulnerabilities[] | "| \(.severity) | \(.pkgName) | \(.installedVersion) | \(.vulnerabilityID) | \(.title) |"' trivy-results.json >> $GITHUB_STEP_SUMMARY
+              # Handle OS/Package Vulnerabilities
+              if jq -e '.Results[] | select(.Vulnerabilities != null)' trivy-results.json > /dev/null; then
+                echo "## Package Vulnerabilities" >> $GITHUB_STEP_SUMMARY
+                echo "| Severity | Package | Installed Version | Fixed Version | Vulnerability ID |" >> $GITHUB_STEP_SUMMARY
+                echo "|----------|---------|-------------------|---------------|-----------------|" >> $GITHUB_STEP_SUMMARY
+                jq -r '.Results[] | select(.Vulnerabilities != null) | .Vulnerabilities[] | "| \(.Severity) | \(.PkgName) | \(.InstalledVersion) | \(.FixedVersion) | \(.VulnerabilityID) |"' trivy-results.json >> $GITHUB_STEP_SUMMARY
+              fi
               
-              echo "::notice::Found ${VULN_COUNT} security vulnerabilities that need to be addressed."
+              # Handle Secrets
+              if jq -e '.Results[] | select(.Secrets != null)' trivy-results.json > /dev/null; then
+                echo "## Secrets" >> $GITHUB_STEP_SUMMARY
+                echo "| Severity | Category | Title | Target | Rule ID |" >> $GITHUB_STEP_SUMMARY
+                echo "|----------|-----------|--------|---------|----------|" >> $GITHUB_STEP_SUMMARY
+                jq -r '.Results[] | select(.Secrets != null) | .Secrets[] | "| \(.Severity) | \(.Category) | \(.Title) | \(.Target) | \(.RuleID) |"' trivy-results.json >> $GITHUB_STEP_SUMMARY
+              fi
+              
+              echo "::notice::Found ${VULN_COUNT} security findings that need to be addressed."
             else
               echo "has_vulnerabilities=false" >> "$GITHUB_OUTPUT"
-              echo "No vulnerabilities found." >> $GITHUB_STEP_SUMMARY
+              echo "No security findings found." >> $GITHUB_STEP_SUMMARY
             fi
           else
             echo "Error: trivy-results.json not found"
