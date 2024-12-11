@@ -29,7 +29,7 @@ jobs:
         uses: aquasecurity/trivy-action@0.29.0
         with:
           image-ref: 'ghcr.io/serversideup/docker-ssh'
-          format: 'github'
+          format: 'json'
           output: 'trivy-results.json'
           github-pat: ${{ secrets.GITHUB_TOKEN }}
           ignore-unfixed: true
