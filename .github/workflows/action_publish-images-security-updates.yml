@@ -39,7 +39,7 @@ jobs:
       - name: Upload trivy report as a Github artifact
         uses: actions/upload-artifact@v4
         with:
-          name: trivy-sbom-report
+          name: trivy-results-json
           path: '${{ github.workspace }}/trivy-results.json'
           retention-days: 20
       
