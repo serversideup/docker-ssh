@@ -81,11 +81,22 @@ generate_tags() {
         local minor=$(echo "$VERSION" | cut -d. -f2)
         local patch=$(echo "$VERSION" | cut -d. -f3)
 
-        # Add all version tags
-        add_tag "v${major}.${minor}.${patch}"  # v3.0.1
-        add_tag "v${major}.${minor}"           # v3.0
-        add_tag "v${major}"                    # v3
-        
+        # Validate version components
+        if [ -z "$major" ] || [ -z "$minor" ] || [ -z "$patch" ]; then
+            echo "Error: Invalid version format. Expected format: v1.2.3" >&2
+            return 1
+        fi
+
+        if [ "$RELEASE_TYPE" = "security" ]; then
+            # Only update major and minor version tags for security updates
+            add_tag "v${major}"                    # v3
+            add_tag "v${major}.${minor}"           # v3.0
+        else
+            # Add all version tags for regular releases
+            add_tag "v${major}.${minor}.${patch}"  # v3.0.1
+            add_tag "v${major}.${minor}"           # v3.0
+            add_tag "v${major}"                    # v3
+        fi
     fi
 
     # Add release type tag
