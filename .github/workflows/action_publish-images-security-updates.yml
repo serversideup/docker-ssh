@@ -20,19 +20,38 @@ jobs:
     outputs:
       has_vulnerabilities: ${{ steps.scan.outputs.has_vulnerabilities || inputs.force_build }}
     steps:
-      - id: scan
+      # Pretty output for logs
+      - id: scan-table
         if: inputs.skip_scan != true
         uses: aquasecurity/trivy-action@0.29.0
         with:
           image-ref: 'ghcr.io/serversideup/docker-ssh'
-          exit-code: '1'
           ignore-unfixed: true
           severity: 'CRITICAL,HIGH'
           hide-progress: true
+          format: 'table'       # Human readable output
+
+      # JSON scan for parsing
+      - id: scan-json
+        if: inputs.skip_scan != true
+        uses: aquasecurity/trivy-action@0.29.0
+        with:
+          image-ref: 'ghcr.io/serversideup/docker-ssh'
+          ignore-unfixed: true
+          severity: 'CRITICAL,HIGH'
+          hide-progress: true
+          format: 'json'        # For parsing
       
-      # Set default output if scanning is skipped
-      - if: inputs.skip_scan
-        run: echo "has_vulnerabilities=true" >> $GITHUB_OUTPUT
+      # Parse Trivy results to set has_vulnerabilities
+      - if: inputs.skip_scan != true
+        id: parse
+        run: |
+          VULN_COUNT=$(cat trivy-results.json | jq '[.Results[] | select(.Vulnerabilities != null) | .Vulnerabilities[]] | length')
+          if [ "$VULN_COUNT" -gt 0 ]; then
+            echo "has_vulnerabilities=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_vulnerabilities=false" >> $GITHUB_OUTPUT
+          fi
 
   get-latest-release:
     runs-on: ubuntu-24.04
