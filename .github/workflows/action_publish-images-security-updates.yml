@@ -15,28 +15,6 @@ on:
     - cron: '0 0 * * *'  # Daily at midnight UTC
 
 jobs:
-  scan-vulnerabilities:
-    runs-on: ubuntu-24.04
-    outputs:
-      has_vulnerabilities: ${{ steps.scan.outputs.has_vulnerabilities || inputs.force_build }}
-    steps:
-      - uses: actions/checkout@v4
-      - id: scan
-        if: inputs.skip_scan != true
-        uses: aquasecurity/trivy-action@0.29.0
-        with:
-          scan-type: 'fs'
-          format: 'table'
-          exit-code: '1'
-          ignore-unfixed: true
-          severity: 'CRITICAL,HIGH'
-          scanners: 'vuln'
-          hide-progress: true
-      
-      # Set default output if scanning is skipped
-      - if: inputs.skip_scan
-        run: echo "has_vulnerabilities=true" >> $GITHUB_OUTPUT
-
   get-latest-release:
     runs-on: ubuntu-24.04
     outputs:
@@ -47,6 +25,28 @@ jobs:
         run: |
           LATEST_RELEASE=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases/latest | jq -r .tag_name)
           echo "release_version=${LATEST_RELEASE}" >> "$GITHUB_OUTPUT"
+
+  scan-vulnerabilities:
+    runs-on: ubuntu-24.04
+    needs: get-latest-release
+    outputs:
+      has_vulnerabilities: ${{ steps.scan.outputs.has_vulnerabilities || inputs.force_build }}
+    steps:
+      - id: scan
+        if: inputs.skip_scan != true
+        uses: aquasecurity/trivy-action@0.29.0
+        with:
+          image-ref: 'ghcr.io/serversideup/docker-ssh:${LATEST_RELEASE}'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          severity: 'CRITICAL,HIGH'
+          scanners: 'vuln'
+          hide-progress: true
+      
+      # Set default output if scanning is skipped
+      - if: inputs.skip_scan
+        run: echo "has_vulnerabilities=true" >> $GITHUB_OUTPUT
 
   build-security-updates:
     needs: [scan-vulnerabilities, get-latest-release]
