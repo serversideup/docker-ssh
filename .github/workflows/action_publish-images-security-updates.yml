@@ -18,6 +18,7 @@ permissions:
   contents: write
   packages: write
   security-events: write
+  repository-advisories: write
 
 jobs:
   scan-vulnerabilities:
