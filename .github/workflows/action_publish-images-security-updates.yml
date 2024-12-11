@@ -2,21 +2,8 @@ name: Docker Publish (Security Updates)
 
 on:
   workflow_dispatch:
-    inputs:
-      force_build:
-        description: 'Force build even if no vulnerabilities found'
-        type: boolean
-        default: false
-      skip_scan:
-        description: 'Skip vulnerability scanning (for testing)'
-        type: boolean
-        default: false
   schedule:
     - cron: '0 0 * * *'  # Daily at midnight UTC
-
-permissions:
-  contents: write
-  packages: write
 
 jobs:
   scan-vulnerabilities:
@@ -24,106 +11,12 @@ jobs:
     outputs:
       has_vulnerabilities: ${{ steps.parse.outputs.has_vulnerabilities || inputs.force_build }}
     steps:
-      # Single scan for both vulnerabilities and dependencies
-      - id: scan
-        if: inputs.skip_scan != true
-        uses: aquasecurity/trivy-action@0.29.0
+      - uses: aquasecurity/trivy-action@0.29.0
         with:
           image-ref: 'ghcr.io/serversideup/docker-ssh'
-          format: 'json'
-          output: 'trivy-results.json'
+          format: 'table'
           github-pat: ${{ secrets.GITHUB_TOKEN }}
           ignore-unfixed: true
+          exit-code: 1
           severity: 'CRITICAL,HIGH'
           hide-progress: true
-
-      - name: Upload trivy report as a Github artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: trivy-results-json
-          path: '${{ github.workspace }}/trivy-results.json'
-          retention-days: 20
-      
-      # Parse results and create advisory if needed
-      - if: inputs.skip_scan != true
-        id: parse
-        env:
-          GH_TOKEN: ${{ secrets.GHA_SECURITY_ADVISORY_PAT }}
-        shell: bash
-        run: |
-          if [ -f trivy-results.json ]; then
-            # Count both vulnerabilities and secrets
-            VULN_COUNT=$(jq -r '[.Results[] | (.Vulnerabilities, .Secrets) | select(. != null) | length] | add // 0' trivy-results.json)
-            
-            echo "Found ${VULN_COUNT} security findings"
-            
-            if [ "${VULN_COUNT:-0}" -gt 0 ]; then
-              echo "has_vulnerabilities=true" >> "$GITHUB_OUTPUT"
-              CURRENT_DATE=$(date +%Y-%m-%d)
-              
-              # Create step summary and advisory content
-              echo "# Security Findings Found" >> $GITHUB_STEP_SUMMARY
-              
-              SUMMARY="## Security Scan Results ($CURRENT_DATE)\n\n### Summary\n- Total Findings: ${VULN_COUNT}"
-              
-              # Handle OS/Package Vulnerabilities
-              if jq -e '.Results[] | select(.Vulnerabilities != null)' trivy-results.json > /dev/null; then
-                echo "## Package Vulnerabilities" >> $GITHUB_STEP_SUMMARY
-                echo "| Severity | Package | Installed Version | Fixed Version | Vulnerability ID |" >> $GITHUB_STEP_SUMMARY
-                echo "|----------|---------|-------------------|---------------|-----------------|" >> $GITHUB_STEP_SUMMARY
-                jq -r '.Results[] | select(.Vulnerabilities != null) | .Vulnerabilities[] | "| \(.Severity) | \(.PkgName) | \(.InstalledVersion) | \(.FixedVersion) | \(.VulnerabilityID) |"' trivy-results.json >> $GITHUB_STEP_SUMMARY
-                
-                VULNS_SECTION=$(jq -r '.Results[] | select(.Vulnerabilities != null) | .Vulnerabilities[] | "### Vulnerability: \(.VulnerabilityID)\n- Package: \(.PkgName)\n- Severity: \(.Severity)\n- Current Version: \(.InstalledVersion)\n- Fixed Version: \(.FixedVersion)\n"' trivy-results.json)
-              fi
-              
-              # Handle Secrets
-              if jq -e '.Results[] | select(.Secrets != null)' trivy-results.json > /dev/null; then
-                echo "## Secrets" >> $GITHUB_STEP_SUMMARY
-                echo "| Severity | Category | Title | Target | Rule ID |" >> $GITHUB_STEP_SUMMARY
-                echo "|----------|-----------|--------|---------|----------|" >> $GITHUB_STEP_SUMMARY
-                jq -r '.Results[] | select(.Secrets != null) | .Secrets[] | "| \(.Severity) | \(.Category) | \(.Title) | \(.Target) | \(.RuleID) |"' trivy-results.json >> $GITHUB_STEP_SUMMARY
-                
-                SECRETS_SECTION=$(jq -r '.Results[] | select(.Secrets != null) | .Secrets[] | "### Secret Finding: \(.Title)\n- Severity: \(.Severity)\n- Category: \(.Category)\n- Location: \(.Target)\n- Rule ID: \(.RuleID)\n"' trivy-results.json)
-              fi
-              
-              # Create the security advisory
-              FULL_DESCRIPTION="${SUMMARY}\n\n${SECRETS_SECTION}\n${VULNS_SECTION}"
-              
-              gh api \
-                --method POST \
-                /repos/${{ github.repository }}/security-advisories \
-                -f summary="🚨 Security Scan Report ($CURRENT_DATE): Found ${VULN_COUNT} findings" \
-                -f description="${FULL_DESCRIPTION}" \
-                -f severity="critical"
-              
-              echo "::notice::Found ${VULN_COUNT} security findings that need to be addressed."
-            else
-              echo "has_vulnerabilities=false" >> "$GITHUB_OUTPUT"
-              echo "No security findings found." >> $GITHUB_STEP_SUMMARY
-            fi
-          else
-            echo "has_vulnerabilities=false" >> "$GITHUB_OUTPUT"
-            echo "::error::trivy-results.json not found"
-            exit 1
-          fi
-
-  get-latest-release:
-    runs-on: ubuntu-24.04
-    outputs:
-      release_version: ${{ steps.get-version.outputs.release_version }}
-    steps:
-      - name: Get Latest Release
-        id: get-version
-        run: |
-          LATEST_RELEASE=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases/latest | jq -r .tag_name)
-          echo "release_version=${LATEST_RELEASE}" >> "$GITHUB_OUTPUT"
-
-  build-security-updates:
-    needs: [scan-vulnerabilities, get-latest-release]
-    if: needs.scan-vulnerabilities.outputs.has_vulnerabilities == 'true' || inputs.force_build == true
-    uses: ./.github/workflows/service_docker-build-and-publish.yml
-    secrets: inherit
-    with:
-      release_type: 'security'
-      ref_type: 'tag'
-      version: "${{ needs.get-latest-release.outputs.release_version }}"
