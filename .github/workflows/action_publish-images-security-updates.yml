@@ -40,7 +40,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: trivy-sbom-report
-          path: '${{ github.workspace }}/dependency-results.sbom.json'
+          path: '${{ github.workspace }}/trivy-results.json'
           retention-days: 20
       
       # Parse results to set has_vulnerabilities (for workflow control)
