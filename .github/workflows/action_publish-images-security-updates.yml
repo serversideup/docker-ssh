@@ -21,7 +21,7 @@ jobs:
   scan-vulnerabilities:
     runs-on: ubuntu-24.04
     outputs:
-      has_vulnerabilities: ${{ steps.scan.outputs.has_vulnerabilities || inputs.force_build }}
+      has_vulnerabilities: ${{ steps.parse.outputs.has_vulnerabilities || inputs.force_build }}
     steps:
       # Single scan for both vulnerabilities and dependencies
       - id: scan
@@ -52,8 +52,10 @@ jobs:
             # Count both vulnerabilities and secrets
             VULN_COUNT=$(jq -r '[.Results[] | (.Vulnerabilities, .Secrets) | select(. != null) | length] | add // 0' trivy-results.json)
             
+            echo "Found ${VULN_COUNT} security findings"
+            
             if [ "${VULN_COUNT:-0}" -gt 0 ]; then
-              echo "has_vulnerabilities='true'" >> "$GITHUB_OUTPUT"
+              echo "has_vulnerabilities=true" >> "$GITHUB_OUTPUT"
               
               echo "# Security Findings Found" >> $GITHUB_STEP_SUMMARY
               
@@ -75,11 +77,11 @@ jobs:
               
               echo "::notice::Found ${VULN_COUNT} security findings that need to be addressed."
             else
-              echo "has_vulnerabilities='false'" >> "$GITHUB_OUTPUT"
+              echo "has_vulnerabilities=false" >> "$GITHUB_OUTPUT"
               echo "No security findings found." >> $GITHUB_STEP_SUMMARY
             fi
           else
-            echo "has_vulnerabilities='false'" >> "$GITHUB_OUTPUT"
+            echo "has_vulnerabilities=false" >> "$GITHUB_OUTPUT"
             echo "::error::trivy-results.json not found"
             exit 1
           fi
