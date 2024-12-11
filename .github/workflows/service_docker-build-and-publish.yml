@@ -77,7 +77,30 @@ jobs:
               --print-tags-only
           fi
 
-      - name: Build and push
+      - name: Build and export to Docker
+        uses: docker/build-push-action@v6
+        with:
+          file: src/Dockerfile
+          cache-from: type=gha,mode=max
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64  # Only build amd64 for scanning
+          pull: true
+          push: false
+          load: true  # Load into Docker's local image store
+          tags: ${{ env.DOCKER_TAGS }}
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@0.29.0
+        with:
+          image-ref: ${{ env.DOCKER_TAGS }}
+          format: 'table'
+          exit-code: 1
+          ignore-unfixed: true
+          severity: 'CRITICAL,HIGH'
+          hide-progress: true
+
+      - name: Build and push all platforms
+        if: success()
         uses: docker/build-push-action@v6
         with:
           file: src/Dockerfile
