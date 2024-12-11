@@ -100,10 +100,10 @@ generate_tags() {
     fi
 
     # Add release type tag
-    if [ "$RELEASE_TYPE" != "latest" ] && [ "$RELEASE_TYPE" != "security" ]; then
-        add_tag "$RELEASE_TYPE"
-    else
+    if [ "$RELEASE_TYPE" == "latest" ] || [ "$RELEASE_TYPE" == "security" ]; then
         add_tag "latest"
+    else
+        add_tag "$RELEASE_TYPE"
     fi
 
     # Print tags
