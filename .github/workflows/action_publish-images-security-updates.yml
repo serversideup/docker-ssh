@@ -20,36 +20,26 @@ jobs:
     outputs:
       has_vulnerabilities: ${{ steps.scan.outputs.has_vulnerabilities || inputs.force_build }}
     steps:
-      # Pretty output for logs
-      - id: scan-table
+      # Single scan for both vulnerabilities and dependencies
+      - id: scan
         if: inputs.skip_scan != true
         uses: aquasecurity/trivy-action@0.29.0
         with:
           image-ref: 'ghcr.io/serversideup/docker-ssh'
+          format: 'github'
+          output: 'trivy-results.json'
+          github-pat: ${{ secrets.GITHUB_TOKEN }}
           ignore-unfixed: true
           severity: 'CRITICAL,HIGH'
           hide-progress: true
-          format: 'table'       # Human readable output
-
-      # JSON scan for parsing
-      - id: scan-json
-        if: inputs.skip_scan != true
-        uses: aquasecurity/trivy-action@0.29.0
-        with:
-          image-ref: 'ghcr.io/serversideup/docker-ssh'
-          ignore-unfixed: true
-          severity: 'CRITICAL,HIGH'
-          hide-progress: true
-          format: 'json'
-          output: 'trivy-results.json'  # Explicitly specify output file
       
-      # Parse Trivy results to set has_vulnerabilities
+      # Parse results to set has_vulnerabilities (for workflow control)
       - if: inputs.skip_scan != true
         id: parse
         shell: bash
         run: |
           if [ -f trivy-results.json ]; then
-            VULN_COUNT=$(jq -r '[ .Results[] | select(.Vulnerabilities != null) | .Vulnerabilities[] ] | length // 0' trivy-results.json)
+            VULN_COUNT=$(jq -r '.vulnerabilities | length // 0' trivy-results.json)
             if [ "${VULN_COUNT:-0}" -gt 0 ]; then
               echo "has_vulnerabilities=true" >> "$GITHUB_OUTPUT"
             else
