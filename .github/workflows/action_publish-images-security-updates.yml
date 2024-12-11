@@ -35,8 +35,10 @@ jobs:
       - id: scan
         if: inputs.skip_scan != true
         uses: aquasecurity/trivy-action@0.29.0
+        env:
+          LATEST_RELEASE: ${{ needs.get-latest-release.outputs.version }}
         with:
-          image-ref: 'ghcr.io/serversideup/docker-ssh:${LATEST_RELEASE}'
+          image-ref: ghcr.io/serversideup/docker-ssh:${{ env.LATEST_RELEASE }}
           format: 'table'
           exit-code: '1'
           ignore-unfixed: true
