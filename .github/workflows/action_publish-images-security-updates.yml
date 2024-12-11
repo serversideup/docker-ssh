@@ -53,7 +53,7 @@ jobs:
             VULN_COUNT=$(jq -r '[.Results[] | (.Vulnerabilities, .Secrets) | select(. != null) | length] | add // 0' trivy-results.json)
             
             if [ "${VULN_COUNT:-0}" -gt 0 ]; then
-              echo "has_vulnerabilities=true" >> "$GITHUB_OUTPUT"
+              echo "has_vulnerabilities='true'" >> "$GITHUB_OUTPUT"
               
               echo "# Security Findings Found" >> $GITHUB_STEP_SUMMARY
               
@@ -75,12 +75,11 @@ jobs:
               
               echo "::notice::Found ${VULN_COUNT} security findings that need to be addressed."
             else
-              echo "has_vulnerabilities=false" >> "$GITHUB_OUTPUT"
+              echo "has_vulnerabilities='false'" >> "$GITHUB_OUTPUT"
               echo "No security findings found." >> $GITHUB_STEP_SUMMARY
             fi
           else
-            echo "Error: trivy-results.json not found"
-            echo "has_vulnerabilities=false" >> "$GITHUB_OUTPUT"
+            echo "has_vulnerabilities='false'" >> "$GITHUB_OUTPUT"
             echo "::error::trivy-results.json not found"
             exit 1
           fi
@@ -98,7 +97,7 @@ jobs:
 
   build-security-updates:
     needs: [scan-vulnerabilities, get-latest-release]
-    if: needs.scan-vulnerabilities.outputs.has_vulnerabilities == 'true'
+    if: needs.scan-vulnerabilities.outputs.has_vulnerabilities == 'true' || inputs.force_build == true
     uses: ./.github/workflows/service_docker-build-and-publish.yml
     secrets: inherit
     with:
