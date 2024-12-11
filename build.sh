@@ -25,7 +25,7 @@ add_tag() {
     local prefix=""
 
     # Set prefix based on RELEASE_TYPE
-    if [ "$RELEASE_TYPE" != "latest" ]; then
+    if [ "$RELEASE_TYPE" != "latest" ] && [ "$RELEASE_TYPE" != "security" ]; then
         prefix="${RELEASE_TYPE}-"
     fi
 
@@ -100,7 +100,11 @@ generate_tags() {
     fi
 
     # Add release type tag
-    add_tag "$RELEASE_TYPE"
+    if [ "$RELEASE_TYPE" != "latest" ] && [ "$RELEASE_TYPE" != "security" ]; then
+        add_tag "$RELEASE_TYPE"
+    else
+        add_tag "latest"
+    fi
 
     # Print tags
     printf '%s\n' "${tags[@]}" | sort -u
