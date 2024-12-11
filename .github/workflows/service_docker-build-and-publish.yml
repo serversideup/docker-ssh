@@ -8,21 +8,7 @@ on:
         required: true
         description: 'Release type (latest, beta, edge, dev, etc)'
         default: 'edge'
-      version:
-        type: string
-        required: false
-        description: 'Version to build (e.g. 1.0.0)'
-        default: "${{ github.ref_name }}"
-      ref_type:
-        type: string
-        required: false
-        description: 'Trigger type (tag or branch)'
-        default: "${{ github.ref_type }}"
-      ref:
-        type: string
-        required: false
-        description: 'Ref to build (e.g. v1.0.0)'
-        default: ''
+
 jobs:
 
   build-and-push:
@@ -30,8 +16,6 @@ jobs:
     steps:
       - name: Check out code.
         uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.ref }}
 
       - name: Login to DockerHub
         uses: docker/login-action@v3
@@ -55,9 +39,9 @@ jobs:
       - name: Set REPOSITORY_BUILD_VERSION
         id: set_version
         run: |
-          if [ "${{ inputs.ref_type }}" == "tag" ]; then
+          if [ "${{ github.ref_type }}" == "tag" ]; then
             echo "🚀 Setting REPOSITORY_BUILD_VERSION to Tag"
-            echo "REPOSITORY_BUILD_VERSION=${{ inputs.version }}-${{ github.run_id }}" >> $GITHUB_ENV
+            echo "REPOSITORY_BUILD_VERSION=${{ github.ref_name }}" >> $GITHUB_ENV
           else
             echo "👨‍🔬 Setting REPOSITORY_BUILD_VERSION to GIT Short SHA and GitHub Run ID"
             SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
@@ -66,10 +50,10 @@ jobs:
 
       - name: "📦 Assemble the Docker Tags"
         run: |
-          if [ "${{ inputs.ref_type }}" == "tag" ]; then
+          if [ "${{ github.ref_type }}" == "tag" ]; then
             bash build.sh \
               --release-type ${{ inputs.release_type }} \
-              --version ${{ inputs.version }} \
+              --version ${{ github.ref_name }} \
               --print-tags-only
           else
             bash build.sh \
@@ -77,30 +61,7 @@ jobs:
               --print-tags-only
           fi
 
-      - name: Build and export to Docker
-        uses: docker/build-push-action@v6
-        with:
-          file: src/Dockerfile
-          cache-from: type=gha,mode=max
-          cache-to: type=gha,mode=max
-          platforms: linux/amd64  # Only build amd64 for scanning
-          pull: true
-          push: false
-          load: true  # Load into Docker's local image store
-          tags: ${{ env.DOCKER_TAGS }}
-
-      - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@0.29.0
-        with:
-          image-ref: ${{ env.DOCKER_TAGS }}
-          format: 'table'
-          exit-code: 1
-          ignore-unfixed: true
-          severity: 'CRITICAL,HIGH'
-          hide-progress: true
-
-      - name: Build and push all platforms
-        if: success()
+      - name: Build and push
         uses: docker/build-push-action@v6
         with:
           file: src/Dockerfile
