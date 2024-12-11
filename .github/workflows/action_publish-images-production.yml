@@ -4,8 +4,6 @@ on:
   workflow_dispatch:
   release:
     types: [released]
-  schedule:
-    - cron: '0 8 * * 2'
 
 jobs:
   build-production-images:
