@@ -45,9 +45,11 @@ jobs:
           path: '${{ github.workspace }}/trivy-results.json'
           retention-days: 20
       
-      # Parse results to set has_vulnerabilities (for workflow control)
+      # Parse results and create advisory if needed
       - if: inputs.skip_scan != true
         id: parse
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
           if [ -f trivy-results.json ]; then
@@ -58,8 +60,12 @@ jobs:
             
             if [ "${VULN_COUNT:-0}" -gt 0 ]; then
               echo "has_vulnerabilities=true" >> "$GITHUB_OUTPUT"
+              CURRENT_DATE=$(date +%Y-%m-%d)
               
+              # Create step summary and advisory content
               echo "# Security Findings Found" >> $GITHUB_STEP_SUMMARY
+              
+              SUMMARY="## Security Scan Results ($CURRENT_DATE)\n\n### Summary\n- Total Findings: ${VULN_COUNT}"
               
               # Handle OS/Package Vulnerabilities
               if jq -e '.Results[] | select(.Vulnerabilities != null)' trivy-results.json > /dev/null; then
@@ -67,6 +73,8 @@ jobs:
                 echo "| Severity | Package | Installed Version | Fixed Version | Vulnerability ID |" >> $GITHUB_STEP_SUMMARY
                 echo "|----------|---------|-------------------|---------------|-----------------|" >> $GITHUB_STEP_SUMMARY
                 jq -r '.Results[] | select(.Vulnerabilities != null) | .Vulnerabilities[] | "| \(.Severity) | \(.PkgName) | \(.InstalledVersion) | \(.FixedVersion) | \(.VulnerabilityID) |"' trivy-results.json >> $GITHUB_STEP_SUMMARY
+                
+                VULNS_SECTION=$(jq -r '.Results[] | select(.Vulnerabilities != null) | .Vulnerabilities[] | "### Vulnerability: \(.VulnerabilityID)\n- Package: \(.PkgName)\n- Severity: \(.Severity)\n- Current Version: \(.InstalledVersion)\n- Fixed Version: \(.FixedVersion)\n"' trivy-results.json)
               fi
               
               # Handle Secrets
@@ -75,7 +83,19 @@ jobs:
                 echo "| Severity | Category | Title | Target | Rule ID |" >> $GITHUB_STEP_SUMMARY
                 echo "|----------|-----------|--------|---------|----------|" >> $GITHUB_STEP_SUMMARY
                 jq -r '.Results[] | select(.Secrets != null) | .Secrets[] | "| \(.Severity) | \(.Category) | \(.Title) | \(.Target) | \(.RuleID) |"' trivy-results.json >> $GITHUB_STEP_SUMMARY
+                
+                SECRETS_SECTION=$(jq -r '.Results[] | select(.Secrets != null) | .Secrets[] | "### Secret Finding: \(.Title)\n- Severity: \(.Severity)\n- Category: \(.Category)\n- Location: \(.Target)\n- Rule ID: \(.RuleID)\n"' trivy-results.json)
               fi
+              
+              # Create the security advisory
+              FULL_DESCRIPTION="${SUMMARY}\n\n${SECRETS_SECTION}\n${VULNS_SECTION}"
+              
+              gh api \
+                --method POST \
+                /repos/${{ github.repository }}/security-advisories \
+                -f summary="🚨 Security Scan Report ($CURRENT_DATE): Found ${VULN_COUNT} findings" \
+                -f description="${FULL_DESCRIPTION}" \
+                -f severity="critical"
               
               echo "::notice::Found ${VULN_COUNT} security findings that need to be addressed."
             else
@@ -108,26 +128,3 @@ jobs:
       release_type: 'security'
       ref_type: 'tag'
       version: "${{ needs.get-latest-release.outputs.release_version }}"
-
-  notify:
-    needs: [build-security-updates]
-    runs-on: ubuntu-24.04
-    if: always()
-    steps:
-      - name: Notify maintainers privately
-        if: needs.build-security-updates.result == 'success'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            await github.rest.securityAdvisories.createPrivateVulnerabilityReport({
-              owner: context.repo.owner,
-              repo: context.repo.name,
-              title: 'Automated Security Updates Applied',
-              description: `Security updates were automatically applied.\n\nAction Run: ${context.serverUrl}/${context.repo.owner}/${context.repo.name}/actions/runs/${context.runId}`,
-              state: 'closed',
-              severity: 'low',
-              identifiers: [{
-                type: 'GHSA',
-                value: `GHSA-auto-${context.runId}`
-              }]
-            });
