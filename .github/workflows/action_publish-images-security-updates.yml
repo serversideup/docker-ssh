@@ -35,6 +35,13 @@ jobs:
           ignore-unfixed: true
           severity: 'CRITICAL,HIGH'
           hide-progress: true
+
+      - name: Upload trivy report as a Github artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-sbom-report
+          path: '${{ github.workspace }}/trivy-results.json'
+          retention-days: 20
       
       # Parse results to set has_vulnerabilities (for workflow control)
       - if: inputs.skip_scan != true
