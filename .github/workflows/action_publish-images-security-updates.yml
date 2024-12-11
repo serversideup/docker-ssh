@@ -17,8 +17,6 @@ on:
 permissions:
   contents: write
   packages: write
-  security-events: write
-  repository-advisories: write
 
 jobs:
   scan-vulnerabilities:
@@ -50,7 +48,7 @@ jobs:
       - if: inputs.skip_scan != true
         id: parse
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GHA_SECURITY_ADVISORY_PAT }}
         shell: bash
         run: |
           if [ -f trivy-results.json ]; then
