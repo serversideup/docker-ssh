@@ -35,13 +35,6 @@ jobs:
           ignore-unfixed: true
           severity: 'CRITICAL,HIGH'
           hide-progress: true
-
-      - name: Upload trivy report as a Github artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: trivy-sbom-report
-          path: '${{ github.workspace }}/trivy-results.json'
-          retention-days: 20
       
       # Parse results to set has_vulnerabilities (for workflow control)
       - if: inputs.skip_scan != true
@@ -52,12 +45,23 @@ jobs:
             VULN_COUNT=$(jq -r '.vulnerabilities | length // 0' trivy-results.json)
             if [ "${VULN_COUNT:-0}" -gt 0 ]; then
               echo "has_vulnerabilities=true" >> "$GITHUB_OUTPUT"
+              
+              # Create native GitHub annotations for vulnerabilities
+              echo "# Security Vulnerabilities Found" >> $GITHUB_STEP_SUMMARY
+              echo "| Severity | Package | Installed Version | Vulnerability ID | Description |" >> $GITHUB_STEP_SUMMARY
+              echo "|----------|---------|-------------------|------------------|-------------|" >> $GITHUB_STEP_SUMMARY
+              
+              jq -r '.vulnerabilities[] | "| \(.severity) | \(.pkgName) | \(.installedVersion) | \(.vulnerabilityID) | \(.title) |"' trivy-results.json >> $GITHUB_STEP_SUMMARY
+              
+              echo "::notice::Found ${VULN_COUNT} security vulnerabilities that need to be addressed."
             else
               echo "has_vulnerabilities=false" >> "$GITHUB_OUTPUT"
+              echo "No vulnerabilities found." >> $GITHUB_STEP_SUMMARY
             fi
           else
             echo "Error: trivy-results.json not found"
             echo "has_vulnerabilities=false" >> "$GITHUB_OUTPUT"
+            echo "::error::trivy-results.json not found"
             exit 1
           fi
 
