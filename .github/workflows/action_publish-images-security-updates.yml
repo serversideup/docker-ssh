@@ -25,11 +25,9 @@ jobs:
         uses: aquasecurity/trivy-action@0.29.0
         with:
           image-ref: 'ghcr.io/serversideup/docker-ssh'
-          format: 'table'
           exit-code: '1'
           ignore-unfixed: true
           severity: 'CRITICAL,HIGH'
-          scanners: 'vuln'
           hide-progress: true
       
       # Set default output if scanning is skipped
