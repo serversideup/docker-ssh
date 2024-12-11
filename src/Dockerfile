@@ -35,7 +35,10 @@ RUN serversideup-dep-install-debian ${PACKAGE_DEPENDENCIES} && \
     chmod 700 /home/$SSH_USER/.ssh && \
     \
     # Create run directory
-    mkdir -p /run/sshd
+    mkdir -p /run/sshd && \
+    \
+    # Remove default SSH host keys
+    rm -f /etc/ssh/ssh_host_*_key*
 
 # Expose the SSH port
 EXPOSE 2222
