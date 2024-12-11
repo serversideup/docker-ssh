@@ -40,17 +40,25 @@ jobs:
           ignore-unfixed: true
           severity: 'CRITICAL,HIGH'
           hide-progress: true
-          format: 'json'        # For parsing
+          format: 'json'
+          output: 'trivy-results.json'  # Explicitly specify output file
       
       # Parse Trivy results to set has_vulnerabilities
       - if: inputs.skip_scan != true
         id: parse
+        shell: bash
         run: |
-          VULN_COUNT=$(cat trivy-results.json | jq '[.Results[] | select(.Vulnerabilities != null) | .Vulnerabilities[]] | length')
-          if [ "$VULN_COUNT" -gt 0 ]; then
-            echo "has_vulnerabilities=true" >> $GITHUB_OUTPUT
+          if [ -f trivy-results.json ]; then
+            VULN_COUNT=$(jq -r '[ .Results[] | select(.Vulnerabilities != null) | .Vulnerabilities[] ] | length // 0' trivy-results.json)
+            if [ "${VULN_COUNT:-0}" -gt 0 ]; then
+              echo "has_vulnerabilities=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "has_vulnerabilities=false" >> "$GITHUB_OUTPUT"
+            fi
           else
-            echo "has_vulnerabilities=false" >> $GITHUB_OUTPUT
+            echo "Error: trivy-results.json not found"
+            echo "has_vulnerabilities=false" >> "$GITHUB_OUTPUT"
+            exit 1
           fi
 
   get-latest-release:
