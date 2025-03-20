@@ -182,7 +182,6 @@ fi
 debug_print "Changing ownership of all files and directories..."
 chown "${PUID}:${PGID}" \
     "${ssh_user_home}" \
-    "${ssh_host_key_dir}" \
     "${ssh_user_home}/.ssh" \
     "${ssh_user_home}/.ssh/authorized_keys"
 chmod 700 \
