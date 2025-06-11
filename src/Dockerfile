@@ -53,6 +53,8 @@ LABEL org.opencontainers.image.title="serversideup/docker-ssh" \
     org.opencontainers.image.version="${REPOSITORY_BUILD_VERSION}" \
     org.opencontainers.image.licenses="GPL-3.0-or-later"
 
+HEALTHCHECK --interval=30s --timeout=30s --start-period=30s --retries=3 \
+    CMD pgrep -f "sshd.*-D" > /dev/null || exit 1
 
 ENTRYPOINT ["/usr/bin/tini", "--", "/entrypoint.sh"]
 CMD ["/usr/sbin/sshd", "-D", "-e"]
