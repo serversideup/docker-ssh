@@ -195,7 +195,7 @@ chmod 755 /etc/ssh/sshd_config.d
 echo "🎨 Creating custom MOTD..."
 {
     echo '\033[38;5;75m╭──────────────────────────────────────────────────────╮\033[0m'
-    echo '\033[38;5;75m│                  🔐 SSH Tunnel Portal                |\033[0m'
+    echo '\033[38;5;75m│                  🔐 SSH Tunnel Portal                │\033[0m'
     echo '\033[38;5;75m╰──────────────────────────────────────────────────────╯\033[0m'
     echo
     echo '\033[1;36m📡 Connection Info:\033[0m'
