@@ -11,7 +11,7 @@ jobs:
     outputs:
       has_vulnerabilities: ${{ steps.parse.outputs.has_vulnerabilities || inputs.force_build }}
     steps:
-      - uses: aquasecurity/trivy-action@0.29.0
+      - uses: aquasecurity/trivy-action@0.35.0
         with:
           image-ref: 'ghcr.io/serversideup/docker-ssh'
           format: 'table'
