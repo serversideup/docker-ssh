@@ -12,7 +12,8 @@ ENV ALLOWED_IPS="AllowUsers tunnel" \
     PUID=9999 \
     SSH_HOST_KEY_DIR="/etc/ssh/ssh_host_keys" \
     SSH_PORT="2222" \
-    SSH_USER="tunnel"
+    SSH_USER="tunnel" \
+    SSH_GATEWAYPORTS="no"
 
 ARG PACKAGE_DEPENDENCIES="openssh-server,iputils-ping,locales,tini" \
     REPOSITORY_BUILD_VERSION="dev"
