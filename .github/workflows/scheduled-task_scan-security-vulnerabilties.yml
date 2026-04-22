@@ -2,16 +2,24 @@ name: Docker Publish (Security Updates)
 
 on:
   workflow_dispatch:
+    inputs:
+      force_build:
+        description: 'Force a rebuild and republish even if no vulnerabilities are detected'
+        type: boolean
+        required: false
+        default: false
   schedule:
-    - cron: '0 23 * * 2'  # Daily at midnight UTC
+    - cron: '0 23 * * 2'  # Weekly Tuesday 23:00 UTC
 
 jobs:
   scan-vulnerabilities:
     runs-on: ubuntu-24.04
     outputs:
-      has_vulnerabilities: ${{ steps.parse.outputs.has_vulnerabilities || inputs.force_build }}
+      has_vulnerabilities: ${{ steps.trivy.outcome == 'failure' }}
     steps:
-      - uses: aquasecurity/trivy-action@0.35.0
+      - id: trivy
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@0.36.0
         with:
           image-ref: 'ghcr.io/serversideup/docker-ssh'
           format: 'table'
@@ -20,3 +28,25 @@ jobs:
           exit-code: 1
           severity: 'CRITICAL,HIGH'
           hide-progress: true
+
+  get-latest-release:
+    needs: scan-vulnerabilities
+    if: ${{ needs.scan-vulnerabilities.outputs.has_vulnerabilities == 'true' || github.event.inputs.force_build == 'true' }}
+    runs-on: ubuntu-24.04
+    outputs:
+      release_tag: ${{ steps.get_latest_release.outputs.release_tag }}
+    steps:
+      - name: Get Latest Release
+        id: get_latest_release
+        run: |
+          LATEST_TAG=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases/latest | jq -r .tag_name)
+          echo "release_tag=${LATEST_TAG}" >> $GITHUB_OUTPUT
+
+  rebuild-and-republish:
+    needs: [scan-vulnerabilities, get-latest-release]
+    if: ${{ needs.scan-vulnerabilities.outputs.has_vulnerabilities == 'true' || github.event.inputs.force_build == 'true' }}
+    uses: ./.github/workflows/service_docker-build-and-publish.yml
+    secrets: inherit
+    with:
+      release_type: 'latest'
+      ref: ${{ needs.get-latest-release.outputs.release_tag }}
