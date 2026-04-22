@@ -14,6 +14,7 @@
 
 ## Features
 - 🐧 **Debian-based** - Get a lightweight experience, while still having Bash
+- 📂 **`rsync` included** - Easily back up or sync data from your Docker volumes over SSH
 - 🤝 **Key-based auth via ENV** - Grant access with the `AUTHORIZED_KEYS` environment variable
 - ⛔️ **Block IPs via ENV** - Block access with the `ALLOWED_IPS` environment variable
 - 🔒 **Unprivileged user** - All SSH connections are made as an unprivileged user
@@ -141,6 +142,41 @@ configs:
 networks:
   database:
 ```
+
+# Working example: Backing up a Docker volume with `rsync`
+Because `rsync` is included in the image, you can mount any Docker volume into the SSH container and pull the data down to your local machine (or push it back up) over a secure SSH tunnel.
+
+### 1. Mount the volume you want to back up
+Attach the volume to a path the SSH user can read. In this example we mount the `app_data` volume to `/data` inside the container as read-only:
+
+```yaml
+services:
+  ssh:
+    image: serversideup/docker-ssh
+    ports:
+      - target: 2222
+        published: 2222
+        mode: host
+    environment:
+      AUTHORIZED_KEYS: >
+        "ssh-ed25519 1234567890abcdefghijklmnoqrstuvwxyz user-a"
+      ALLOWED_IPS: "AllowUsers tunnel@1.2.3.4"
+    volumes:
+      - app_data:/data:ro
+
+volumes:
+  app_data:
+    external: true
+```
+
+### 2. Pull the data down with `rsync`
+From your local machine, use `rsync` over SSH to copy the contents of the volume to a local directory:
+
+```sh
+rsync -avz -e "ssh -p 12345" tunnel@myserver.test:/data/ ./app_data-backup/
+```
+
+> ℹ️ **NOTE:** Drop the `:ro` flag on the volume mount if you also need to push data **back into** the volume.
 
 ## Resources
 - **[DockerHub](https://hub.docker.com/r/serversideup/ansible)** to browse the images.
