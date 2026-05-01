@@ -44,6 +44,7 @@ SSH_GROUP|Group name used for our SSH user.|`tunnelgroup`
 SSH_HOST_KEY_DIR|Location of where the SSH host keys should be stored.|`/etc/ssh/ssh_host_keys/`
 SSH_PORT|Listening port for SSH server (on container only. You'll still need to publish this port).|`2222`
 SSH_USER|Username for the SSH user that other users will connect into as.|`tunnel`
+SSH_GATEWAYPORTS|Setting for the GatewayPorts sshd_config for reverse tunnelling|`no`
 
 
 ### 1. Set your `AUTHORIZED_KEYS` environment variable or provide a `/authorized_keys` file

@@ -7,7 +7,7 @@ ssh_user=${SSH_USER:-"${default_unprivileged_user}"}
 ssh_host_key_dir=${SSH_HOST_KEY_DIR:-"/etc/ssh/ssh_host_keys"}
 ssh_user_home="/home/${ssh_user}"
 ssh_port=${SSH_PORT:-"2222"}
-
+gatewayports=${SSH_GATEWAYPORTS:-"no"}
 
 if [ "$DEBUG" = "true" ]; then
     set -x
@@ -119,6 +119,7 @@ echo "🤖 Setting SSHD configuration..."
     echo "MaxStartups 10:30:100"
     echo "ClientAliveInterval 300"
     echo "ClientAliveCountMax 2"
+    echo "GatewayPorts ${gatewayports}"
 } > /etc/ssh/sshd_config.d/custom.conf
 
 if [ "$DEBUG" = "true" ]; then
