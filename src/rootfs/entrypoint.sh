@@ -9,6 +9,7 @@ ssh_user_home="/home/${ssh_user}"
 ssh_port=${SSH_PORT:-"2222"}
 gatewayports=${SSH_GATEWAYPORTS:-"no"}
 
+
 if [ "$DEBUG" = "true" ]; then
     set -x
 fi
@@ -29,6 +30,17 @@ validate_allowed_ips() {
         echo "Invalid ALLOWED_IPS format"
         exit 1
     fi
+}
+
+validate_gateway_ports() {
+    case "$1" in
+        yes|no|clientspecified) ;;
+        *)
+            echo "🚨🚨🚨 CONFIGURATION ERROR:"
+            echo "SSH_GATEWAYPORTS must be set to \"yes\", \"no\", or \"clientspecified\"."
+            exit 1
+            ;;
+    esac
 }
 
 ######################################################
@@ -85,6 +97,7 @@ if { [ ! -z "${PUID}" ] && [ "${PUID}" != "$default_uid" ]; } || { [ ! -z "${PGI
 fi
 
 # Set SSHD configuration
+validate_gateway_ports "${gatewayports}"
 echo "🤖 Setting SSHD configuration..."
 {
     echo "Port ${ssh_port}"
