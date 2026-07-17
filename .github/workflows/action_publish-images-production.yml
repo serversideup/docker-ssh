@@ -17,9 +17,13 @@ jobs:
         id: get_latest_release
         run: |
           LATEST_TAG=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases/latest | jq -r .tag_name)
-          echo "release_tag=${LATEST_TAG}" >> $GITHUB_OUTPUT
+          echo "release_tag=${LATEST_TAG}" >> "$GITHUB_OUTPUT"
 
   build-production-images:
+    needs: get-latest-release
+    permissions:
+      contents: read
+      packages: write
     uses: ./.github/workflows/service_docker-build-and-publish.yml
     secrets: inherit
     with:

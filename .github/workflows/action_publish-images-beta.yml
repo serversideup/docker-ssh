@@ -4,6 +4,7 @@ on:
   workflow_dispatch:
   release:
     types: [prereleased]
+
 jobs:
   get-latest-beta-release:
     runs-on: ubuntu-24.04
@@ -14,9 +15,13 @@ jobs:
         id: get_latest_beta
         run: |
           LATEST_BETA=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases | jq -r '[.[] | select(.prerelease == true)][0].tag_name')
-          echo "release_tag=${LATEST_BETA}" >> $GITHUB_OUTPUT
-          
+          echo "release_tag=${LATEST_BETA}" >> "$GITHUB_OUTPUT"
+
   build-beta-images:
+    needs: get-latest-beta-release
+    permissions:
+      contents: read
+      packages: write
     uses: ./.github/workflows/service_docker-build-and-publish.yml
     secrets: inherit
     with:

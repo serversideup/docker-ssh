@@ -1,0 +1,81 @@
+name: Scan Image
+
+on:
+  workflow_call:
+    inputs:
+      image-ref:
+        type: string
+        required: true
+        description: 'Full image reference to scan (e.g. ghcr.io/serversideup/docker-ssh:edge)'
+      severity:
+        type: string
+        default: 'CRITICAL,HIGH'
+        description: 'Comma-separated Trivy severities to report on'
+      ignore-unfixed:
+        type: boolean
+        default: true
+        description: 'Ignore vulnerabilities that do not yet have a fix available'
+      fail-on-vulnerabilities:
+        type: boolean
+        default: false
+        description: >-
+          When true, the job fails if fixable vulnerabilities are found (use as a
+          publish gate). When false, findings are reported only via the
+          has_vulnerabilities output (use to trigger a downstream rebuild).
+    outputs:
+      has_vulnerabilities:
+        description: 'true when one or more matching vulnerabilities were found'
+        value: ${{ jobs.scan.outputs.has_vulnerabilities }}
+
+jobs:
+  scan:
+    runs-on: ubuntu-24.04
+    outputs:
+      has_vulnerabilities: ${{ steps.evaluate.outputs.has_vulnerabilities }}
+    steps:
+      # exit-code is deliberately 0: we never signal "vulnerabilities found" through the
+      # process exit code. That way a non-zero exit / missing output file means the scan
+      # itself failed (bad image pull, DB download, a hijacked action refusing to run) and
+      # the job fails loudly, instead of being silently misread as "no vulnerabilities".
+      - name: Scan ${{ inputs.image-ref }}
+        id: trivy
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ inputs.image-ref }}
+          format: 'json'
+          output: 'trivy-results.json'
+          ignore-unfixed: ${{ inputs.ignore-unfixed }}
+          exit-code: 0
+          severity: ${{ inputs.severity }}
+          hide-progress: true
+
+      - name: Evaluate scan results
+        id: evaluate
+        env:
+          IMAGE_REF: ${{ inputs.image-ref }}
+          SEVERITY: ${{ inputs.severity }}
+          FAIL_ON_VULNERABILITIES: ${{ inputs.fail-on-vulnerabilities }}
+        run: |
+          if [ ! -s trivy-results.json ]; then
+            echo "💥 Trivy produced no results file — the scan did not complete. Failing loudly."
+            exit 1
+          fi
+
+          VULN_COUNT=$(jq '[.Results[]?.Vulnerabilities[]?] | length' trivy-results.json)
+          echo "Found ${VULN_COUNT} fixable ${SEVERITY} vulnerabilities in ${IMAGE_REF}."
+
+          if [ "${VULN_COUNT}" -gt 0 ]; then
+            {
+              echo "### 🔴 ${VULN_COUNT} ${SEVERITY} vulnerabilities in \`${IMAGE_REF}\`"
+              jq -r '.Results[]? | .Vulnerabilities[]? | "- \(.VulnerabilityID) (\(.Severity)) in \(.PkgName) \(.InstalledVersion) → fixed in \(.FixedVersion)"' trivy-results.json
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "has_vulnerabilities=true" >> "$GITHUB_OUTPUT"
+
+            if [ "${FAIL_ON_VULNERABILITIES}" = "true" ]; then
+              echo "❌ Failing the job: fail-on-vulnerabilities is enabled and fixable vulnerabilities were found."
+              exit 1
+            fi
+          else
+            echo "### ✅ No fixable ${SEVERITY} vulnerabilities in \`${IMAGE_REF}\`" >> "$GITHUB_STEP_SUMMARY"
+            echo "has_vulnerabilities=false" >> "$GITHUB_OUTPUT"
+          fi

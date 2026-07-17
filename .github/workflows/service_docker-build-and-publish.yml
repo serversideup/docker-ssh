@@ -7,7 +7,6 @@ on:
         type: string
         required: true
         description: 'Release type (latest, beta, edge, dev, etc)'
-        default: 'edge'
       ref:
         type: string
         default: ${{ github.ref }}
@@ -17,6 +16,9 @@ jobs:
 
   build-and-push:
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
     steps:
       - name: Check out code.
         uses: actions/checkout@v7
@@ -47,11 +49,11 @@ jobs:
         run: |
           if [ "${{ github.ref_type }}" == "tag" ]; then
             echo "🚀 Setting REPOSITORY_BUILD_VERSION to Tag"
-            echo "REPOSITORY_BUILD_VERSION=${{ github.ref_name }}" >> $GITHUB_ENV
+            echo "REPOSITORY_BUILD_VERSION=${{ github.ref_name }}" >> "$GITHUB_ENV"
           else
             echo "👨‍🔬 Setting REPOSITORY_BUILD_VERSION to GIT Short SHA and GitHub Run ID"
-            SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
-            echo "REPOSITORY_BUILD_VERSION=git-${SHORT_SHA}-${{ github.run_id }}" >> $GITHUB_ENV
+            SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+            echo "REPOSITORY_BUILD_VERSION=git-${SHORT_SHA}-${{ github.run_id }}" >> "$GITHUB_ENV"
           fi
 
       - name: "📦 Assemble the Docker Tags"

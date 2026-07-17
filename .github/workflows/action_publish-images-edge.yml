@@ -9,12 +9,26 @@ on:
       - src/**
       - .github/workflows/**
       - generate-tags.sh
+
 jobs:
   build-edge-images:
+    permissions:
+      contents: read
+      packages: write
     uses: ./.github/workflows/service_docker-build-and-publish.yml
     secrets: inherit
     with:
       release_type: 'edge'
+
+  # Scan the freshly-pushed edge image and fail the run on fixable vulnerabilities, so
+  # regressions on main surface before they reach beta or a release. Production/beta are
+  # intentionally not failed this way.
+  scan-edge-image:
+    needs: build-edge-images
+    uses: ./.github/workflows/service_scan-image.yml
+    with:
+      image-ref: 'ghcr.io/serversideup/docker-ssh:edge'
+      fail-on-vulnerabilities: true
 
   update_container_readme:
     runs-on: ubuntu-24.04

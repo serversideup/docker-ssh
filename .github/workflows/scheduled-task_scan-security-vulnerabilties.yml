@@ -12,22 +12,14 @@ on:
     - cron: '0 23 * * 2'  # Weekly Tuesday 23:00 UTC
 
 jobs:
+  # Drift detection: scan the already-published image for CVEs disclosed since it was
+  # built. fail-on-vulnerabilities is false — a finding here is a signal to rebuild
+  # (which pulls patched base packages), not a failure.
   scan-vulnerabilities:
-    runs-on: ubuntu-24.04
-    outputs:
-      has_vulnerabilities: ${{ steps.trivy.outcome == 'failure' }}
-    steps:
-      - id: trivy
-        continue-on-error: true
-        uses: aquasecurity/trivy-action@v0.36.0
-        with:
-          image-ref: 'ghcr.io/serversideup/docker-ssh'
-          format: 'table'
-          github-pat: ${{ secrets.GITHUB_TOKEN }}
-          ignore-unfixed: true
-          exit-code: 1
-          severity: 'CRITICAL,HIGH'
-          hide-progress: true
+    uses: ./.github/workflows/service_scan-image.yml
+    with:
+      image-ref: 'ghcr.io/serversideup/docker-ssh'
+      fail-on-vulnerabilities: false
 
   get-latest-release:
     needs: scan-vulnerabilities
@@ -40,11 +32,14 @@ jobs:
         id: get_latest_release
         run: |
           LATEST_TAG=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases/latest | jq -r .tag_name)
-          echo "release_tag=${LATEST_TAG}" >> $GITHUB_OUTPUT
+          echo "release_tag=${LATEST_TAG}" >> "$GITHUB_OUTPUT"
 
   rebuild-and-republish:
     needs: [scan-vulnerabilities, get-latest-release]
     if: ${{ needs.scan-vulnerabilities.outputs.has_vulnerabilities == 'true' || github.event.inputs.force_build == 'true' }}
+    permissions:
+      contents: read
+      packages: write
     uses: ./.github/workflows/service_docker-build-and-publish.yml
     secrets: inherit
     with:
