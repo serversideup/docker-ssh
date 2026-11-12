@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 # check=skip=SecretsUsedInArgOrEnv
-FROM debian:bookworm-slim
+FROM debian:trixie-slim
 
 ENV ALLOWED_IPS="AllowUsers tunnel" \
     DEBUG_MODE="false" \

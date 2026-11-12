@@ -1,81 +1,168 @@
 name: Scan Image
 
+# Grype scans one published image. Every finding is counted in the run summary, and with
+# upload-alerts the findings that have a fix become code scanning alerts in the Security tab.
+#
+# A compromised scanner has nothing to steal: the scan job has no token, no registry
+# credentials, and Grype runs in its own container without the runner's environment.
+# Only the alerts job can write, and it never runs Grype.
 on:
   workflow_call:
     inputs:
       image-ref:
         type: string
         required: true
-        description: 'Full image reference to scan (e.g. ghcr.io/serversideup/docker-ssh:edge)'
-      severity:
-        type: string
-        default: 'CRITICAL,HIGH'
-        description: 'Comma-separated Trivy severities to report on'
-      ignore-unfixed:
-        type: boolean
-        default: true
-        description: 'Ignore vulnerabilities that do not yet have a fix available'
+        description: 'Image reference to scan, including its tag (e.g. ghcr.io/serversideup/docker-ssh:edge)'
       fail-on-vulnerabilities:
         type: boolean
         default: false
         description: >-
-          When true, the job fails if fixable vulnerabilities are found (use as a
-          publish gate). When false, findings are reported only via the
+          When true, the job fails if fixable Critical or High vulnerabilities are found
+          (use as a publish gate). When false, findings are reported only via the
           has_vulnerabilities output (use to trigger a downstream rebuild).
+      upload-alerts:
+        type: boolean
+        default: false
+        description: 'Replace the code scanning alerts with the fixable findings of this scan.'
     outputs:
       has_vulnerabilities:
-        description: 'true when one or more matching vulnerabilities were found'
+        description: 'true when one or more fixable Critical or High vulnerabilities were found'
         value: ${{ jobs.scan.outputs.has_vulnerabilities }}
+
+permissions: {}
+
+env:
+  # renovate: datasource=docker depName=anchore/grype
+  GRYPE_VERSION: v0.121.0@sha256:621d56d1d68106b787022c81546f7e0a36202a25d1239f0c20195fab8c16f7ea
+  SCAN_PLATFORM: linux/amd64
 
 jobs:
   scan:
     runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions: {}
     outputs:
-      has_vulnerabilities: ${{ steps.evaluate.outputs.has_vulnerabilities }}
+      has_vulnerabilities: ${{ steps.scan.outputs.has_vulnerabilities }}
+      sarif-artifact: ${{ steps.scan.outputs.sarif-artifact }}
     steps:
-      # exit-code is deliberately 0: we never signal "vulnerabilities found" through the
-      # process exit code. That way a non-zero exit / missing output file means the scan
-      # itself failed (bad image pull, DB download, a hijacked action refusing to run) and
-      # the job fails loudly, instead of being silently misread as "no vulnerabilities".
+      # Grype's exit code is never used to signal "vulnerabilities found". A failed run or a
+      # missing results file means the scan itself failed (bad image pull, DB download, a
+      # tampered scanner), and the job fails loudly instead of reading it as "no vulnerabilities".
       - name: Scan ${{ inputs.image-ref }}
-        id: trivy
-        uses: aquasecurity/trivy-action@v0.36.0
-        with:
-          image-ref: ${{ inputs.image-ref }}
-          format: 'json'
-          output: 'trivy-results.json'
-          ignore-unfixed: ${{ inputs.ignore-unfixed }}
-          exit-code: 0
-          severity: ${{ inputs.severity }}
-          hide-progress: true
-
-      - name: Evaluate scan results
-        id: evaluate
+        id: scan
         env:
           IMAGE_REF: ${{ inputs.image-ref }}
-          SEVERITY: ${{ inputs.severity }}
           FAIL_ON_VULNERABILITIES: ${{ inputs.fail-on-vulnerabilities }}
+          SCAN_ATTEMPTS: 3
         run: |
-          if [ ! -s trivy-results.json ]; then
-            echo "💥 Trivy produced no results file — the scan did not complete. Failing loudly."
+          mkdir -p raw
+          chmod 777 raw
+
+          # The digest is scanned, not the tag, so a publish during the scan can't change what is reported.
+          REPOSITORY="${IMAGE_REF%:*}"
+          scan_image() {
+            DIGEST=$(docker buildx imagetools inspect "$IMAGE_REF" --format '{{json .Manifest.Digest}}' | jq -r .) || return 1
+            docker run --rm -v "$PWD/raw:/out" "anchore/grype:${GRYPE_VERSION}" \
+              "registry:${REPOSITORY}@${DIGEST}" --platform "$SCAN_PLATFORM" --quiet \
+              --output "json=/out/scan.json" --output "sarif=/out/scan.sarif"
+          }
+
+          attempt=1
+          until scan_image; do
+            if [ "$attempt" -ge "$SCAN_ATTEMPTS" ]; then
+              echo "::error title=Scan failed::${IMAGE_REF} could not be scanned after ${SCAN_ATTEMPTS} attempts"
+              exit 1
+            fi
+            sleep $(( 10 * attempt ))
+            attempt=$(( attempt + 1 ))
+          done
+
+          if [ ! -s raw/scan.json ] || [ ! -s raw/scan.sarif ]; then
+            echo "::error title=Scan failed::Grype produced no results for ${IMAGE_REF}"
             exit 1
           fi
 
-          VULN_COUNT=$(jq '[.Results[]?.Vulnerabilities[]?] | length' trivy-results.json)
-          echo "Found ${VULN_COUNT} fixable ${SEVERITY} vulnerabilities in ${IMAGE_REF}."
+          # shellcheck disable=SC2016 # the backticks are Markdown
+          {
+            echo "## Vulnerabilities in \`${IMAGE_REF}\`"
+            echo ""
+            echo "Scanned \`${REPOSITORY}@${DIGEST}\` (${SCAN_PLATFORM})."
+            echo ""
+            echo "| Critical | High | Medium | Fixable |"
+            echo "|---|---|---|---|"
+            jq -r '[.matches[].vulnerability] as $v
+              | def count(s): [$v[] | select(.severity == s)] | length;
+              "| \(count("Critical")) | \(count("High")) | \(count("Medium")) | \([$v[] | select(.fix.state == "fixed")] | length) |"' raw/scan.json
+          } >> "$GITHUB_STEP_SUMMARY"
 
-          if [ "${VULN_COUNT}" -gt 0 ]; then
+          FIXABLE=$(jq -r '.matches[]
+            | select(.vulnerability.fix.state == "fixed" and (.vulnerability.severity == "Critical" or .vulnerability.severity == "High"))
+            | "- \(.vulnerability.id) (\(.vulnerability.severity)) in \(.artifact.name) \(.artifact.version) → fixed in \(.vulnerability.fix.versions | join(", "))"' raw/scan.json)
+
+          # Every scan writes a SARIF file, even with no findings, so a clean scan closes the alerts.
+          # Fingerprints are pinned to the rule so an alert stays the same alert across rebuilds.
+          jq --slurpfile scan raw/scan.json '
+            ([$scan[0].matches[] | select(.vulnerability.fix.state == "fixed") | "\(.vulnerability.id)-\(.artifact.name)"] | unique) as $fixable
+            | .runs[0].tool.driver.rules |= map(select(.id as $id | $fixable | index($id)))
+            | .runs[0].results |= map(select(.ruleId as $id | $fixable | index($id))
+              | .partialFingerprints = {primaryLocationLineHash: "\(.ruleId):1"})' raw/scan.sarif > grype.sarif
+
+          # A caller can scan more than once in a run, and artifact names must be unique within it.
+          echo "sarif-artifact=grype-sarif-$(date +%s%N)" >> "$GITHUB_OUTPUT"
+
+          if [ -n "$FIXABLE" ]; then
             {
-              echo "### 🔴 ${VULN_COUNT} ${SEVERITY} vulnerabilities in \`${IMAGE_REF}\`"
-              jq -r '.Results[]? | .Vulnerabilities[]? | "- \(.VulnerabilityID) (\(.Severity)) in \(.PkgName) \(.InstalledVersion) → fixed in \(.FixedVersion)"' trivy-results.json
+              echo ""
+              echo "### Fixable Critical and High vulnerabilities"
+              echo "$FIXABLE"
             } >> "$GITHUB_STEP_SUMMARY"
             echo "has_vulnerabilities=true" >> "$GITHUB_OUTPUT"
+            echo "$FIXABLE"
 
-            if [ "${FAIL_ON_VULNERABILITIES}" = "true" ]; then
-              echo "❌ Failing the job: fail-on-vulnerabilities is enabled and fixable vulnerabilities were found."
+            if [ "$FAIL_ON_VULNERABILITIES" = "true" ]; then
+              echo "::error title=Vulnerabilities found::${IMAGE_REF} has fixable Critical or High vulnerabilities"
               exit 1
             fi
           else
-            echo "### ✅ No fixable ${SEVERITY} vulnerabilities in \`${IMAGE_REF}\`" >> "$GITHUB_STEP_SUMMARY"
             echo "has_vulnerabilities=false" >> "$GITHUB_OUTPUT"
+            echo "No fixable Critical or High vulnerabilities in ${IMAGE_REF}"
           fi
+
+      - name: Upload the findings
+        if: inputs.upload-alerts
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ steps.scan.outputs.sarif-artifact }}
+          path: grype.sarif
+          retention-days: 7
+
+  alerts:
+    needs: scan
+    if: inputs.upload-alerts && needs.scan.result == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      # Alerts describe the published image, not a commit, so every scan reports against
+      # main. Release and weekly scans then share one list of alerts.
+      - name: Find the main commit
+        id: main
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: echo "sha=$(gh api "repos/${GH_REPO}/commits/main" --jq .sha)" | tee -a "$GITHUB_OUTPUT"
+
+      - name: Download the findings
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: ${{ needs.scan.outputs.sarif-artifact }}
+
+      - name: Update the code scanning alerts
+        uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
+        with:
+          sarif_file: grype.sarif
+          category: grype/latest
+          ref: refs/heads/main
+          sha: ${{ steps.main.outputs.sha }}

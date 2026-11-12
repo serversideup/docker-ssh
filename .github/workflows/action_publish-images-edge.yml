@@ -25,6 +25,9 @@ jobs:
   # intentionally not failed this way.
   scan-edge-image:
     needs: build-edge-images
+    permissions:
+      contents: read
+      security-events: write
     uses: ./.github/workflows/service_scan-image.yml
     with:
       image-ref: 'ghcr.io/serversideup/docker-ssh:edge'

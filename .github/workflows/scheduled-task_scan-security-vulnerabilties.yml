@@ -16,10 +16,13 @@ jobs:
   # built. fail-on-vulnerabilities is false — a finding here is a signal to rebuild
   # (which pulls patched base packages), not a failure.
   scan-vulnerabilities:
+    permissions:
+      contents: read
+      security-events: write
     uses: ./.github/workflows/service_scan-image.yml
     with:
-      image-ref: 'ghcr.io/serversideup/docker-ssh'
-      fail-on-vulnerabilities: false
+      image-ref: 'ghcr.io/serversideup/docker-ssh:latest'
+      upload-alerts: true
 
   get-latest-release:
     needs: scan-vulnerabilities
@@ -45,3 +48,14 @@ jobs:
     with:
       release_type: 'latest'
       ref: ${{ needs.get-latest-release.outputs.release_tag }}
+
+  # Rescans the rebuilt image so the alerts the rebuild fixed are closed.
+  scan-rebuilt-image:
+    needs: rebuild-and-republish
+    permissions:
+      contents: read
+      security-events: write
+    uses: ./.github/workflows/service_scan-image.yml
+    with:
+      image-ref: 'ghcr.io/serversideup/docker-ssh:latest'
+      upload-alerts: true

@@ -29,3 +29,13 @@ jobs:
     with:
       release_type: 'latest'
       ref: ${{ needs.get-latest-release.outputs.release_tag }}
+
+  scan-production-image:
+    needs: build-production-images
+    permissions:
+      contents: read
+      security-events: write
+    uses: ./.github/workflows/service_scan-image.yml
+    with:
+      image-ref: 'ghcr.io/serversideup/docker-ssh:latest'
+      upload-alerts: true

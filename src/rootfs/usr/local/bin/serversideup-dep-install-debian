@@ -38,6 +38,8 @@ convert_comma_delimited_to_space_separated() {
 DEP_PACKAGES=$(convert_comma_delimited_to_space_separated "$@")
 echo "🤖 Installing: $DEP_PACKAGES"
 apt-get update
+# The debian base image lags behind security updates, so a rebuild only ships a fix once it upgrades.
+apt-get upgrade -y
 apt-get install -y $DEP_PACKAGES
 
 
